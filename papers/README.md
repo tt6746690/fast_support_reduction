@@ -48,7 +48,7 @@
     + take-away
         + how to formulate a ARAP-like energy function
     
-##### deformation
+#### deformation
 
 + https://cseweb.ucsd.edu/classes/sp16/cse169-a/readings/3-Skin.html
     + background on skinning
@@ -164,12 +164,38 @@
         + degrees of freedom for handles
             + unconstrained -> shape-aware inverse kinematics
             + `T_j` translations only -> unnatural sheared deformations
+        + solution
+            + optimize remaining degrees of freedom of the handle transformations that user did not specify.
+            + constrain
+                + transformation that is fixed
+                + location of transformed points, i.e. fixed
+            + minimize 
+                + ARAP energy between rest-pose shape `M` and deformed shape `M'`
+                + energy w.r.t.
+                    + handle transformation `T`
+                    + local rotations `R` 
+    + rotation clusters
+        + motivation
+            + motions of neighboring vertices highly correlated, so find clustered vertices and let them undergo similar deformations
+        + idea
+            + cluster vertices based on euclidean distance in _weight space_
+                + each vertex `v_i` assigned a vector of skinning weights,
+            + k-means clustering to find grouping
+    + additional weight function
+        + idea
+            + create a set of abstract handles whose transformation entirely determined by optimization. 
+            + if all handles constrained, then FAST reduces to LBS, not ideal!
+        + step
+            + smooth isotropic cubic B-spline basis function in weight space
     + question
+        + why vertex 4D, 1 in the end
         + difference between closed form deformation with paper's method. In both cases T_j needs to be specified beforehand
             + advantage of the method is there is automatic inference of some degrees of freedoms
+        + local rotation not known in our project?
+            + the search space is then both `T` and `R` where `R` is clustered to groups
 
 
-##### Intersection detection 
+#### Intersection detection 
 
 + [2017_generalized_matryoshka_computational_design_of_nesting_objects](2017_generalized_matryoshka_computational_design_of_nesting_objects.pdf)
     + goal  
@@ -201,9 +227,38 @@
     + acceleration
 
 
+#### Casting 
+
++ [2018_interactive_design_of_castable_shapes_using_two_piece_rigid_molds](2018_interactive_design_of_castable_shapes_using_two_piece_rigid_molds.pdf)
+    + abstract
+        + tool to generate two-piece rigid modls separated by a plane cut.
+        + castabililty energy optimized with gradient-based methods with elastoplastic deformation based on ARAP
+    + castability
+        + component of a mold, called _state_
+            + cast mesh 
+                + `(V,F)`
+            + cut plane 
+                + 4-vector `p`, first 3 plane normal, 4th an offset of plane from origin
+            + removal directions
+                + `d1`,`d2`  for each side of the plane
+        + goal
+            + arrive at a _castable_ state
+                + cut along cut plane
+                + cast object can be removed from mold with collison-free translation, or _removability condition_
+                    + `N_f \dot d >= \tau` for all `f \in F`
+    + castability energy
+        + ARAP energy with local-global optimization
+        + enforce castability
+            + during rotational step of ARAP optimization, check if removability condition is fulfilled, if not, rotate tetrahedron around `dxN` that this face belongs until removability condition is satisfied
+    + steps
+        + pick initial _state_
+        + until shape castable, repeat
+            + find optimal removal directions by minimizing castability energy
+            + run ARAP until convergence
+        + post-processing minimizing castability energy, taken into account tolerance levels
 
 
-##### Previous papers on Signed distance field
+#### Signed distance field
 
 + [2013_robust_inside_outside_segmentation_using_generalized_winding_numbers](2013_robust_inside_outside_segmentation_using_generalized_winding_numbers.pdf)
     + algorithm for 
