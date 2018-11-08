@@ -1,28 +1,15 @@
 
 
+```
+git clone --recursive git@github.com:tt6746690/fast_support_reduction.git
+```
 
 
+#### TODO
 
-
-#### Questions
-
-
-+ question 
-    + how does 3D -> 2D rendering works? depth peeling
-    + displaced centroid?
-
-+ idea
-    + skeleton based deformation for support for 3D printing
-+ bounded biharmonic weights for real-time deformation
-    + given skeleton, gneerate weights for each vertex
-+ fast automatic skinning transofmration 
-    + ARAP skeleton
-
-+ todo
-    + 2D prototype, 
-        + use http://libigl.github.io/libigl/python-bindings/
-        + generalize overhang energy term to skeleton...
-    + libigl examples
++ fix bbw for 2D case
++ confirm with alec/oded on if its possible to derive closed form solution for 3 energy terms
+    + and then make the derivation 
 
 
 #### API 
@@ -43,19 +30,3 @@
         + vertices `(,3)` (7234)
         + tets `(,4)` (29998)
         + faces `(,3)` (9556)
-
-
-#### TODO
-
-
-+ ask alec to gives code on mashoysha
-+ bounded harmonic weights tut403
-    + `boundary_condition` not correspond to paper
-    + does not work, so need to figure out how to do this
-    + ill try to make bbw work in 2D, otherwise well move to 3d
-
-
-+ closed form solution 
-    + derivation for overlap and support reduction
-
-
