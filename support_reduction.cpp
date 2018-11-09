@@ -7,7 +7,6 @@
 #include <igl/mat_max.h>
 #include <igl/slice.h>
 #include <igl/opengl/glfw/Viewer.h>
-#include <igl/boundary_loop.h>
 
 #include "src/defs.h"
 #include "src/compute_bbw.h"
@@ -56,5 +55,4 @@ int main(int argc, char*argv[]) {
     double alpha_max = 0.25 * M_PI;
     double tau = std::sin(alpha_max);
     auto e = overhang_energy(V, F, dp, tau, true);
-
 }
