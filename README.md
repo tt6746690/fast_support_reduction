@@ -8,8 +8,12 @@ git clone --recursive git@github.com:tt6746690/fast_support_reduction.git
 #### TODO
 
 + fix bbw for 2D case
-+ confirm with alec/oded on if its possible to derive closed form solution for 3 energy terms
++ confirm with alec/oded on if its possible to derive closed form solution for 3 energy term
     + and then make the derivation 
+
++ look at mashoya for global optimization procedure
++ explore global optimization
++ list energy terms
 
 
 #### API 

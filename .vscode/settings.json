@@ -13,6 +13,7 @@
         "algorithm": "cpp",
         "hashtable": "cpp",
         "unordered_map": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "sparse": "cpp"
     }
 }

@@ -24,8 +24,8 @@ bool compute_bbw(const std::string& filename, bool display) {
     Eigen::MatrixXd V, C;
     Eigen::MatrixXi F, BE;
 
-    igl::readOBJ(DATA_PATH "woody.obj", V, F);
-    igl::readTGF(DATA_PATH "woody.tgf", C, BE);
+    igl::readOBJ(DATA_PATH+filename+".obj", V, F);
+    igl::readTGF(DATA_PATH+filename+".tgf", C, BE);
 
     // Instead of remeshing with additional handle positions C
     // Map handle each handle position to closest vertex in V
@@ -35,7 +35,7 @@ bool compute_bbw(const std::string& filename, bool display) {
         C.row(i) = V.row(closest);
     }
 
-    // // Compute bbw
+    // Compute bbw
 
     // b: List of boundary indices (fixed value indices into V)
     // bc: List of boundary conditions of each weight function
@@ -59,7 +59,7 @@ bool compute_bbw(const std::string& filename, bool display) {
     // enforce parity of unity constraint
     igl::normalize_row_sums(W, W);
     // outputs bbw weights
-    igl::writeDMAT(DATA_PATH "woody.dmat", W, true);
+    igl::writeDMAT(DATA_PATH+filename+".dmat", W, true);
 
     if (display) {
         const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
