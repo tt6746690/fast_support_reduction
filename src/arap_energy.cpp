@@ -60,7 +60,7 @@ void arap_precompute(
 
 
 
-float arap_compute(
+double arap_compute(
     const Eigen::MatrixXd& T,
     const Eigen::MatrixXd& R,
     const Eigen::MatrixXd& tK,

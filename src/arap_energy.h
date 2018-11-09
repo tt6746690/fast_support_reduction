@@ -48,7 +48,7 @@ void arap_precompute(
 //            r is number of edges
 // Outputs:
 //   arap energy
-float arap_compute(
+double arap_energy(
     const Eigen::MatrixXd& T,
     const Eigen::MatrixXd& R,
     const Eigen::MatrixXd& tK,

@@ -7,12 +7,15 @@
 #include <igl/mat_max.h>
 #include <igl/slice.h>
 #include <igl/opengl/glfw/Viewer.h>
+#include <igl/boundary_loop.h>
 
 #include "src/defs.h"
 #include "src/compute_bbw.h"
 #include "src/arap_energy.h"
+#include "src/overhang_energy.h"
 
 #include <iostream>
+#include <cmath>
 
 
 int main(int argc, char*argv[]) {
@@ -49,13 +52,9 @@ int main(int argc, char*argv[]) {
     Eigen::MatrixXd tL, tK;
     arap_precompute(V, F, M, tL, tK);
 
-    // Plot the mesh with pseudocolors
-    const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
-    igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_mesh(V, F);
-    viewer.data().add_points(igl::slice(V,b,1),sea_green);
-    viewer.data().show_lines = false;
-    cout<<
-        "Press [space] to toggle animation."<<endl;
-    viewer.launch();
+    Eigen::RowVector3d dp(0., 1., 0.);
+    double alpha_max = 0.25 * M_PI;
+    double tau = std::sin(alpha_max);
+    auto e = overhang_energy(V, F, dp, tau, true);
+
 }
