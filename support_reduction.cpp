@@ -48,8 +48,8 @@ int main(int argc, char*argv[]) {
         igl::mat_max(W, 1, maxW, b);
     }
 
-    Eigen::MatrixXd tL, tK;
-    arap_precompute(V, F, M, tL, tK);
+    Eigen::SparseMatrix<double> L, K;
+    arap_precompute(V, F, M, L, K);
 
     Eigen::RowVector3d dp(0., 1., 0.);
     double alpha_max = 0.25 * M_PI;

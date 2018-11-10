@@ -5,7 +5,7 @@
 
 // Computes overhang energy
 //      
-//      E(V) = \int_{∂M} min(nˆ(x) · dp − τ, 0)dx
+//      E(V) = \int_{∂M} min(nˆ(x) · dp + τ, 0)dx
 //
 // Inputs:
 //      V,  #V by dim

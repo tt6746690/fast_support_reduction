@@ -1,6 +1,5 @@
 \documentclass[12pt]{article}
-\input{\string~/.preamble}
-
+\usepackage{amsmath}
 \newcommand{\calM}{\mathcal{M}}
 \newcommand{\calV}{\mathcal{V}}
 \newcommand{\calF}{\mathcal{F}}
@@ -28,7 +27,11 @@
 
 Let $\calM = (\bV, \bF)$ be mesh living in dimension $d\in \{2,3\}$. Let $\bV = \{\bv_1^T, \cdots, \bv_n^T\}^T \in \R^{n \times d}$ be rest-pose vertex positions. Let $\calH = \{ \bh_1, \cdots, \bh_m \}$ be a set of control handles. Let $\bT_j \in \R^{d \times (d+1)}$ be affine transformation for each handle $\bh_j$. Let $\bT = \{ \bT_1^T, \cdots, \bT_m^T \}^T \in \R^{(d+1)m \times d}$. Linear blend skinning is a deformation method whereby deformed vertices $\bV' = \{ \bv_1'^T, \cdots, \bv_n'^T \}^T \in \R^{n\times d}$ is a weighted linear combination of handles' transformations,
 \[
-    v_i' = \sum_{j=1}^m w_j(\bv_i) \bT_j  \begin{pmatrix} \bv_i \\ 1 \end{pmatrix} 
+    v_i' = \sum_{j=1}^m w_j(\bv_i) \bT_j 
+    \begin{pmatrix} 
+    \bv_i \\
+    1
+    \end{pmatrix} 
 \]
 where $w_j: \calM \rightarrow \R$ is computed using bounded biharmonic weights. Equivalently
 \[
@@ -45,8 +48,8 @@ We can define \textit{as-rigid-as-possible} deformation energy that measures loc
 and in matrix form
 \[
     E_{arap}(\bV', \R) 
-    = tr(\bV'^T \bL \bV' + \bV'^T \bK \bR )
-    = tr(\bT^T \tilde{\bL} \bT + \bT^T \tilde{\bK} \bR)
+    = tr(\frac{1}{2}\bV'^T \bL \bV' + \bV'^T \bK \bR )
+    = tr(\frac{1}{2}\bT^T \tilde{\bL} \bT + \bT^T \tilde{\bK} \bR)
 \]
 where $\tilde{\bL} = \bM^T \bL \bM \in \R^{(d+1)m \times (d+1)m}$, $\tilde{\bK} = \bM^T \bK \in \R^{(d+1)m \times dn}$ and $\bK$ as defined in the deformation assignment
 
@@ -54,7 +57,7 @@ where $\tilde{\bL} = \bM^T \bL \bM \in \R^{(d+1)m \times (d+1)m}$, $\tilde{\bK} 
 
 An overhanging region that can be 3D printed without support is called \textit{self-supported}. We call the angle between region's tangent plane and printing direction be \textit{self-supported angle} $\alpha$. Let $\alpha_{max}$ be maximum supporting angle. Let $\tau = sin(\alpha_{max})$ be \textit{maximal supporting coefficient}. Let $\partial \calM \subset \bF$ be boundary of mesh $\calM$, i.e. surface faces. A surface face $f$ is \textit{risky} and thus requires support if $\bn(f) \cdot \bd_{p} < -\tau$, where $\bn(f)$ is unit normal of $f$ and $\bd_{p}$ is the printing direction. We can define an overhang energy that measures support required for 3D printing,
 \[
-    E_{support}(\bV') = \sum_{f\in \partial \calM} min(\bn(f) \cdot \bd_{p} - \tau, 0)
+    E_{support}(\bV') = \sum_{f\in \partial \calM} min(\bn(f) \cdot \bd_{p} + \tau, 0)
 \]
 
 \end{document}

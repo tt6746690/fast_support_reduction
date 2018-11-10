@@ -6,7 +6,7 @@
 
 // Precompute data needed to compute ARAP energy
 //
-//      E(V', R) = tr(T^t * \tilde{L} * T) + tr(T^t * \tilde{K} * R)
+//      E(V', R) = 0.5 * tr(T^t * \tilde{L} * T) + tr(T^t * \tilde{K} * R)
 //
 // Inputs:
 //   V  #V by d vertex positions    d is dimension
@@ -25,19 +25,21 @@ void arap_precompute(
     const Eigen::MatrixXd& V,
     const Eigen::MatrixXi& F,
     const Eigen::MatrixXd& M,
-    Eigen::MatrixXd& tL,
-    Eigen::MatrixXd& tK);
+    Eigen::SparseMatrix<double>& L,
+    Eigen::SparseMatrix<double>& K);
 
 
 // Computes ARAP energy given T, R
+// notice that R are local rotation matrices, not a part of DOFs
 //
-//      E(V', R) = tr(T^t * \tilde{L} * T) + tr(T^t * \tilde{K} * R)
+//      E(V', R) = 0.5 * tr(T^t * \tilde{L} * T) + tr(T^t * \tilde{K} * R)
+//      E(V', R) = 0.5 * tr(T^t * M^t * L * M * T) + tr(T^t * M^t * K * R)
 // 
 // Inputs:
 //   T,  (d+1)m x d
 //      vertical stack of transposed affine transformation for handles
-//   R,  d x dr
-//      horizontal stack of 3x3 rotation matrix for each edge
+//   M  n by m      n is number of vertices, m is number of handles
+//       Linear blend skinning matrix `M` for computing `V' = M * T`
 //   tL, (d+1)m by (d+1)m
 //      \tilde{L} in above expression
 //   tK, (d+1)m by dn
@@ -50,9 +52,9 @@ void arap_precompute(
 //   arap energy
 double arap_energy(
     const Eigen::MatrixXd& T,
-    const Eigen::MatrixXd& R,
-    const Eigen::MatrixXd& tK,
-    const Eigen::MatrixXd& tL);
+    const Eigen::MatrixXd& M,
+    Eigen::SparseMatrix<double>& L,
+    Eigen::SparseMatrix<double>& K);
 
 
 #endif

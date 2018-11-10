@@ -1,25 +1,20 @@
 #include "arap_energy.h"
 
 #include <igl/cotmatrix.h>
+#include <igl/polar_svd3x3.h>
 #include <vector>
 
 void arap_precompute(
     const Eigen::MatrixXd& V,
     const Eigen::MatrixXi& F,
     const Eigen::MatrixXd& M,
-    Eigen::MatrixXd& tL,
-    Eigen::MatrixXd& tK)
+    Eigen::SparseMatrix<double>& L,
+    Eigen::SparseMatrix<double>& K)
 {
-
-    Eigen::MatrixXd Mt = M.transpose();
-
-    // Compute \tilde{L}
-
-    Eigen::SparseMatrix<double> L;
+    // Compute L
     igl::cotmatrix(V, F, L);
-    tL = Mt * L * M;
 
-    // Compute \tilde{K}
+    // Compute K
     
     std::vector<Eigen::Triplet<double>> triplets;
     triplets.reserve(F.rows() * 3 * 3 * 3 * 2);
@@ -51,23 +46,37 @@ void arap_precompute(
     }
 
     int nv = V.rows();
-    Eigen::SparseMatrix<double> K;
     K.resize(nv, 3*nv);
     K.setFromTriplets(triplets.begin(), triplets.end());
-    K = K / 6;
-    tK = Mt * K;
+    K = K / 6.0;
 }
 
 
 
 double arap_compute(
     const Eigen::MatrixXd& T,
-    const Eigen::MatrixXd& R,
-    const Eigen::MatrixXd& tK,
-    const Eigen::MatrixXd& tL) 
+    const Eigen::MatrixXd& M,
+    const Eigen::SparseMatrix<double>& L,
+    const Eigen::SparseMatrix<double>& K)
 {
-    Eigen::MatrixXd sum, Tt;
+    Eigen::MatrixXd sum, Tt, Mt, V, C, Ct;
+    Mt = M.transpose();
     Tt = T.transpose();
-    sum = Tt*tL*T + Tt*tK*R;
-    return sum.trace();
+    V = M * T;
+    C = K.transpose() * V;
+    Ct = C.transpose();
+
+    // construct matrix R
+    const int size = V.rows();
+    Eigen::MatrixXd R(C.rows(), C.cols());
+    Eigen::Matrix3d Ck, Rk;
+    for (int k = 0; k < size; k++) {
+        Ck = C.block(3 * k, 0, 3, 3);
+        igl::polar_svd3x3(Ck, Rk);
+        R.block(3 * k, 0, 3, 3) = Rk;
+    }
+
+    sum = 0.5 * Tt * Mt * L * M * T + Ct * R;
+    double obj = sum.trace();
+    return obj;
 }
