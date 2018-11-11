@@ -199,7 +199,7 @@ int main(int argc, char*argv[]) {
 
                 // precompute U
                 Eigen::SparseMatrix<double> Aeq;
-                igl::min_quad_with_fixed_precompute(L, b, Aeq, false, data);
+                igl::min_quad_with_fixed_precompute(L, b, Aeq, false, arap_data);
             }
             break;
         default:
@@ -261,7 +261,7 @@ int main(int argc, char*argv[]) {
         {
             arap_single_iteration(arap_data, arap_K, s.CU, U);
             std::vector<int> unsafe;
-            auto e = overhang_energy(U, F, dp, tau, unsafe);
+            auto e = overhang_energy(U, F, dp, tau, 2, unsafe);
             // draw unsafe edges
             for (int i = 0; i < unsafe.size() / 2; ++i) {
                 viewer.data().add_edges(

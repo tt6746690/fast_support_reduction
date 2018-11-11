@@ -14,14 +14,11 @@
 //   F  #F by simplex-size list of element indices
 //   M  n by m      n is number of vertices, m is number of handles
 //       Linear blend skinning matrix `M` for computing `V' = M * T`
-//   b  handle positions
 // Outputs: 
 //   L, (d+1)m by (d+1)m
 //      L in above expression
 //   K, (d+1)m by dn
 //      K in above expression
-//   data  
-//      pre-factorized system matrix etc. (see `igl::min_quad_with_fixed`)
 //
 //      where d is dimension, 
 //            m is number of handles

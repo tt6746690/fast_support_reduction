@@ -16,8 +16,7 @@ void arap_precompute(
     const Eigen::MatrixBase<DerivedF>& F,
     const Eigen::MatrixBase<DerivedM>& M,
     Eigen::SparseMatrix<ScalarL>& L,
-    Eigen::SparseMatrix<ScalarK>& K,
-    igl::min_quad_with_fixed_data<double>& data)
+    Eigen::SparseMatrix<ScalarK>& K)
 {
     typedef typename DerivedV::Scalar ScalarV;
     typedef typename DerivedF::Scalar ScalarF;
@@ -128,9 +127,11 @@ double arap_energy(
 // template specialization 
 
 template
-void arap_precompute<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<float, -1, -1, 0, -1, -1>, float, float>(Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1>
- > const&, Eigen::SparseMatrix<float, 0, int>&, Eigen::SparseMatrix<float, 0, int>&);
-
+void arap_precompute<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<float, -1, -1, 0, -1, -1>, float, float>(Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::SparseMatrix<float, 0, int>&, Eigen::SparseMatrix<float, 0, int>&);
 
 template
 double arap_energy<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<float, -1, -1, 0, -1, -1>, float, float>(Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::SparseMatrix<float, 0, int> const&, Eigen::SparseMatrix<float, 0, int> const&);
+
+
+template
+void arap_precompute<Eigen::Matrix<double, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<double, -1, -1, 0, -1, -1>, double, double>(Eigen::MatrixBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<double, -1, -1, 0, -1, -1> > const&, Eigen::SparseMatrix<double, 0, int>&, Eigen::SparseMatrix<double, 0, int>&);

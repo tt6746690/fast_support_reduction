@@ -28,5 +28,5 @@ target_link_libraries(bbw igl::core igl::opengl_glfw)
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 target_link_libraries(support_reduction igl::core igl::opengl_glfw)
 
-# add_executable(visualize visualize.cpp ${SRCFILES})
-# target_link_libraries(visualize igl::core igl::opengl_glfw)
+add_executable(visualize visualize.cpp ${SRCFILES})
+target_link_libraries(visualize igl::core igl::opengl_glfw)
