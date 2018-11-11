@@ -80,15 +80,27 @@ An overhanging region that can be 3D printed without support is called \textit{s
     E_{overhang}(\bV') = \sum_{f\in \partial \calM} min(\bn(f) \cdot \bd_{p} + \tau, 0)
 \]
 
+
+\subsection*{self-intersection energy}
+
+To prevent ARAP from deforming the mesh in such a way as to cause self-intersections, we add a third energy to measure them. We define a \textit{self\-intersecting region} as the region inside the mesh that is bordered by intersecting tetrahedra (we assume the input mesh is well-formed and does not contain any self-intersections on its surface). Given $j$ such regions we define the self-intersection energy to be
+\[
+	E_{intersect}(\bV') = \sum_{i=1}^j V_i
+\]
+
+where $V_i$ is the volume of the $i^{\text{th}}$ region. To find these volumes, we trace a ray up from every pixel which can see part of the mesh directly above it and keep track of the number of times it has entered the mesh. "Entering" simply means the direction of the ray is opposite to the vertical component of the normal direction of the surface at that point. If it enters the mesh twice in a row, we know the ray must be in a self-intersecting region. When it exits (i.e. when its direction is the \textit{same} as the vertical component of the normal), we record the length of the ray between the entrance and the exit. The sum of all these lengths produces the combined volume.
+
+
 \subsection*{optimization}
 
 Given an objective $E(\bx): \R^n \rightarrow \R$, 
 \[
-    E = E_{arap} + E_{overhang} + E_{overlap}
+    E = E_{arap} + E_{overhang} + E_{intersect}
 \]
 we find minimizer of $E$ using particle swarm optimization. Let $\bx \in \R^{2dm}$ consisting a representation of centroid and rotation (as Euler's angle) about the centroid of for each edge handle. For shape in 
 
 Finally, we can convert each component to $\bT_j$, affine transformations for edge handles, from which can compute deformed shaped $\bV' = \bM \bT$ with LBS.
+
 
 
 \end{document}

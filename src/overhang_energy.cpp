@@ -30,8 +30,8 @@ double overhang_energy(
     Eigen::RowVector3f dpn;
     dpn = dp.normalized();
 
-    double energy, e;
-    energy = 0;
+    double e;
+    double energy = 0;
 
     // 2D case
 
