@@ -19,5 +19,6 @@
         "cfenv": "cpp",
         "core": "cpp",
         "iostream": "cpp"
-    }
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
 }
