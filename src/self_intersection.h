@@ -13,6 +13,7 @@
 //      F   #F by 3 list of triangle faces
 double self_intersection(
     const Eigen::MatrixXd V,
-    const Eigen::MatrixXi F);
+    const Eigen::MatrixXi F,
+    std::vector<Eigen::Vector3d> & intersection);
 
 #endif
