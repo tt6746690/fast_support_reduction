@@ -29,8 +29,8 @@ int main(int argc, char*argv[]) {
     double alpha_max = 0.25 * M_PI;
     Eigen::RowVector3f dp(0., 1., 0.);
     dp.normalize();
-    int pso_iters = 20;
-    int pso_populations = 10;
+    int pso_iters = 100;
+    int pso_populations = 20;
     Eigen::MatrixXf T;
 
     reduce_support(V, F, W, alpha_max, dp, pso_iters, pso_populations, T, U);

@@ -109,6 +109,8 @@ float reduce_support(
     max_coord = V.colwise().maxCoeff();
 
     int k = 0;
+    float psi = M_PI / 4;
+
     for (int j = 0; j < m; ++j) {
 
         k = 2*d*j;
@@ -119,21 +121,21 @@ float reduce_support(
         X(k+2) = 0;
 
         if (is3d) {
-            LB(k)   = -M_PI;
-            LB(k+1) = -M_PI;
-            LB(k+2) = -M_PI;
-            UB(k)   = M_PI;
-            UB(k+1) = M_PI;
-            UB(k+2) = M_PI;
+            LB(k)   = -psi;
+            LB(k+1) = -psi;
+            LB(k+2) = -psi;
+            UB(k)   = psi;
+            UB(k+1) = psi;
+            UB(k+2) = psi;
         } else {
             // 2D rotation on {x,y}-plane amounts to 
             //      fixing rotation around {x,y}-axis, and allow rotation around z-axis
             LB(k)   = 0;
             LB(k+1) = 0;
-            LB(k+2) = -M_PI;
+            LB(k+2) = -psi;
             UB(k)   = 0;
             UB(k+1) = 0;
-            UB(k+2) = M_PI;
+            UB(k+2) = psi;
         }
 
         k += 3;
@@ -178,9 +180,9 @@ float reduce_support(
 
         iter += 1;
 
-        float fX = (float) (E_arap + E_overhang);
+        float fX = (float) (0.00001*E_arap + 0.5*E_overhang);
         std::cout << "iter: " << iter << "; f(X) = " << fX <<
-            "Earap: " << E_arap << " Eoverhang: " << E_overhang << '\n';
+            "Earap: " << 0.00001*E_arap << " Eoverhang: " << E_overhang << '\n';
         return fX;
     };
 
