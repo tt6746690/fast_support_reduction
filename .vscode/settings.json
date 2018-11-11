@@ -14,6 +14,10 @@
         "hashtable": "cpp",
         "unordered_map": "cpp",
         "utility": "cpp",
-        "sparse": "cpp"
+        "sparse": "cpp",
+        "dense": "cpp",
+        "cfenv": "cpp",
+        "core": "cpp",
+        "iostream": "cpp"
     }
 }

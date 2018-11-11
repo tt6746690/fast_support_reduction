@@ -1,5 +1,10 @@
 \documentclass[12pt]{article}
 \usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+
+\newcommand{\R}{\mathbb{R}}
+
 \newcommand{\calM}{\mathcal{M}}
 \newcommand{\calV}{\mathcal{V}}
 \newcommand{\calF}{\mathcal{F}}
@@ -17,11 +22,16 @@
 \newcommand{\bK}{\mathbf{K}}
 \newcommand{\bn}{\mathbf{n}}
 \newcommand{\bd}{\mathbf{d}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\ba}{\mathbf{a}}
+\newcommand{\bb}{\mathbf{b}}
 
 
+\DeclareMathOperator*{\argmin}{arg\,min} % Jan Hlavacek
+
+ 
 
 \begin{document}
-
 
 \subsection*{Problem formulation}
 
@@ -37,17 +47,27 @@ where $w_j: \calM \rightarrow \R$ is computed using bounded biharmonic weights. 
 \[
     \bV' = \bM \bT
 \]
-where,  $\bM \in \R^{n \times (d+1)m}$ is a matrix combining $\bV$ and $\bW$. 
+where,  $\bM \in \R^{n \times (d+1)m}$ is a matrix combining $\bV$ and $\bW$. Note, the energy functions below are function of $\bV'$ and hence a function of $\bT$ by substituting $\bM \bT$ in place of $\bV'$, i.e. 
+\[
+    E_{arap}(\bT) = E_{arap}(\bT, \bM) = E_{arap}(\bV')
+\]
+where $\bM$ fixed
 
 \subsection*{arap energy}
 
 We can define \textit{as-rigid-as-possible} deformation energy that measures local distortion,
 \[
-    E_{arap}(\bV', \R) = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ij} || (\bv_i' - \bv_j') - (\bv_i - \bv_j) ||^2
+    E_{arap}(\bV', \bR) = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ij} || (\bv_i' - \bv_j') - \bR(\bv_i - \bv_j) ||^2
+\]
+We want to reformulate ARAP energy base on $\bV'$ only.
+\[
+    E_{arap}(\bV')
+    \qquad
+    \bR = \argmin_{\bR} tr(\bR\tilde{\bK}\bT)
 \]
 and in matrix form
 \[
-    E_{arap}(\bV', \R) 
+    E_{arap}(\bV') 
     = tr(\frac{1}{2}\bV'^T \bL \bV' + \bV'^T \bK \bR )
     = tr(\frac{1}{2}\bT^T \tilde{\bL} \bT + \bT^T \tilde{\bK} \bR)
 \]
@@ -57,7 +77,18 @@ where $\tilde{\bL} = \bM^T \bL \bM \in \R^{(d+1)m \times (d+1)m}$, $\tilde{\bK} 
 
 An overhanging region that can be 3D printed without support is called \textit{self-supported}. We call the angle between region's tangent plane and printing direction be \textit{self-supported angle} $\alpha$. Let $\alpha_{max}$ be maximum supporting angle. Let $\tau = sin(\alpha_{max})$ be \textit{maximal supporting coefficient}. Let $\partial \calM \subset \bF$ be boundary of mesh $\calM$, i.e. surface faces. A surface face $f$ is \textit{risky} and thus requires support if $\bn(f) \cdot \bd_{p} < -\tau$, where $\bn(f)$ is unit normal of $f$ and $\bd_{p}$ is the printing direction. We can define an overhang energy that measures support required for 3D printing,
 \[
-    E_{support}(\bV') = \sum_{f\in \partial \calM} min(\bn(f) \cdot \bd_{p} + \tau, 0)
+    E_{overhang}(\bV') = \sum_{f\in \partial \calM} min(\bn(f) \cdot \bd_{p} + \tau, 0)
 \]
+
+\subsection*{optimization}
+
+Given an objective $E(\bx): \R^n \rightarrow \R$, 
+\[
+    E = E_{arap} + E_{overhang} + E_{overlap}
+\]
+we find minimizer of $E$ using particle swarm optimization. Let $\bx \in \R^{2dm}$ consisting a representation of centroid and rotation (as Euler's angle) about the centroid of for each edge handle. For shape in 
+
+Finally, we can convert each component to $\bT_j$, affine transformations for edge handles, from which can compute deformed shaped $\bV' = \bM \bT$ with LBS.
+
 
 \end{document}

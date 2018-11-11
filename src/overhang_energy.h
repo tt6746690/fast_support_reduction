@@ -12,14 +12,18 @@
 //      F,  #F by dim
 //      dp,             printing direction
 //      tau,            self-supporting coefficient, τ = sin(α_max)
+//      dim,            dimension {2, 3}
 // Outputs:
 //      overhang energy E(V)
+template <
+    typename DerivedV,
+    typename DerivedF>
 double overhang_energy(
-    const Eigen::MatrixXd V,
-    const Eigen::MatrixXi F,
-    const Eigen::RowVector3d dp,
-    const double tau,
+    const Eigen::MatrixBase<DerivedV>& V,
+    const Eigen::MatrixBase<DerivedF>& F,
+    const Eigen::RowVector3f& dp,
+    double tau,
+    int dim,
     bool display);
-
 
 #endif

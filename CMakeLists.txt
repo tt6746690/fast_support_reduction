@@ -3,6 +3,10 @@ project(fast_support_reduction)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+# compiler 
+add_definitions(${CMAKE_CXX_FLAGS} "-g")
+add_definitions(${CMAKE_CXX_FLAGS} "-Wall")
+
 # libigl
 
 option(LIBIGL_WITH_OPENGL            "Use OpenGL"         ON)

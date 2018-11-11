@@ -21,12 +21,18 @@
 //
 //      where d is dimension, 
 //            m is number of handles
+template <
+    typename DerivedV,
+    typename DerivedF,
+    typename DerivedM,
+    typename ScalarL,
+    typename ScalarK>
 void arap_precompute(
-    const Eigen::MatrixXd& V,
-    const Eigen::MatrixXi& F,
-    const Eigen::MatrixXd& M,
-    Eigen::SparseMatrix<double>& L,
-    Eigen::SparseMatrix<double>& K);
+    const Eigen::MatrixBase<DerivedV>& V,
+    const Eigen::MatrixBase<DerivedF>& F,
+    const Eigen::MatrixBase<DerivedM>& M,
+    Eigen::SparseMatrix<ScalarL>& L,
+    Eigen::SparseMatrix<ScalarK>& K);
 
 
 // Computes ARAP energy given T, R
@@ -50,11 +56,16 @@ void arap_precompute(
 //            r is number of edges
 // Outputs:
 //   arap energy
+template<
+    typename DerivedT,
+    typename DerivedM,
+    typename ScalarL,
+    typename ScalarK>
 double arap_energy(
-    const Eigen::MatrixXd& T,
-    const Eigen::MatrixXd& M,
-    Eigen::SparseMatrix<double>& L,
-    Eigen::SparseMatrix<double>& K);
+    const Eigen::MatrixBase<DerivedT>& T,
+    const Eigen::MatrixBase<DerivedM>& M,
+    const Eigen::SparseMatrix<ScalarL>& L,
+    const Eigen::SparseMatrix<ScalarK>& K);
 
 
 #endif

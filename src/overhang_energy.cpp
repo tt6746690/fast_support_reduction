@@ -10,28 +10,38 @@
 #include <cmath>
 #include <iostream>
 
+template <
+    typename DerivedV,
+    typename DerivedF>
 double overhang_energy(
-    const Eigen::MatrixXd V,
-    const Eigen::MatrixXi F,
-    const Eigen::RowVector3d dp,
-    const double tau,
+    const Eigen::MatrixBase<DerivedV>& V,
+    const Eigen::MatrixBase<DerivedF>& F,
+    const Eigen::RowVector3f& dp,
+    double tau,
+    int dim,
     bool display)
 {
 
-    Eigen::RowVector3d dpn;
+    typedef typename DerivedV::Scalar ScalarV;
+    typedef Eigen::Matrix<ScalarV, 3, 1> RowVector3VT;
+    typedef typename DerivedF::PlainObject PlainObjectF;
+
+
+    Eigen::RowVector3f dpn;
     dpn = dp.normalized();
 
     double energy, e;
+    energy = 0;
 
     // 2D case
 
-    if (V.cols() == 3 && V.col(2).sum() == 0.) {
+    if (dim == 2) {
 
         Eigen::VectorXi bnd;
-        igl::boundary_loop(F, bnd);
+        igl::boundary_loop((PlainObjectF)F, bnd);
 
         int bnd_size = bnd.size();
-        Eigen::RowVector3d i, j, ele, n;
+        RowVector3VT i, j, ele, n;
         std::vector<int> unsafe;
 
         for (int b = 0; b < bnd_size; ++b) {
@@ -56,12 +66,12 @@ double overhang_energy(
             const Eigen::RowVector3d red(255./255., 0., 0.);
             const Eigen::RowVector3d green(0., 255./255., 0.);
             igl::opengl::glfw::Viewer viewer;
-            viewer.data().set_mesh(V, F);
+            viewer.data().set_mesh(V.template cast<double>().eval(), F);
             // draw unsafe edges
             for (int i = 0; i < unsafe.size() / 2; ++i) {
                 viewer.data().add_edges(
-                    V.row(unsafe[2*i]),
-                    V.row(unsafe[2*i+1]),
+                    V.row(unsafe[2*i]).template cast<double>().eval(),
+                    V.row(unsafe[2*i+1]).template cast<double>().eval(),
                     red
                 );
             }
@@ -70,8 +80,13 @@ double overhang_energy(
         }
 
     } else {
-        printf("overlap energy for 3D not supported!\n");
+        printf("overhang energy for 3D not supported!\n");
     }
 
     return energy;
 }
+
+// template specialization
+
+template
+double overhang_energy<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1> >(Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::Matrix<float, 1, 3, 1, 1, 3> const&, double, int, bool);

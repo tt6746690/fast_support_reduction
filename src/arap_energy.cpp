@@ -4,24 +4,36 @@
 #include <igl/polar_svd3x3.h>
 #include <vector>
 
+
+template <
+    typename DerivedV,
+    typename DerivedF,
+    typename DerivedM,
+    typename ScalarL,
+    typename ScalarK>
 void arap_precompute(
-    const Eigen::MatrixXd& V,
-    const Eigen::MatrixXi& F,
-    const Eigen::MatrixXd& M,
-    Eigen::SparseMatrix<double>& L,
-    Eigen::SparseMatrix<double>& K)
+    const Eigen::MatrixBase<DerivedV>& V,
+    const Eigen::MatrixBase<DerivedF>& F,
+    const Eigen::MatrixBase<DerivedM>& M,
+    Eigen::SparseMatrix<ScalarL>& L,
+    Eigen::SparseMatrix<ScalarK>& K)
 {
+    typedef typename DerivedV::Scalar ScalarV;
+    typedef typename DerivedF::Scalar ScalarF;
+    typedef Eigen::Matrix<ScalarV, 3, 1> RowVector3VT;
+    typedef Eigen::Matrix<ScalarF, 3, 1> RowVector3FT;
+
     // Compute L
     igl::cotmatrix(V, F, L);
 
     // Compute K
     
-    std::vector<Eigen::Triplet<double>> triplets;
+    std::vector<Eigen::Triplet<ScalarV>> triplets;
     triplets.reserve(F.rows() * 3 * 3 * 3 * 2);
 
     int i, j, k;
-    Eigen::RowVector3i f;
-    Eigen::RowVector3d e;
+    RowVector3FT f;
+    RowVector3VT e;
 
     for (int a = 0; a < F.rows(); ++a) {
         f = F.row(a);
@@ -53,13 +65,22 @@ void arap_precompute(
 
 
 
-double arap_compute(
-    const Eigen::MatrixXd& T,
-    const Eigen::MatrixXd& M,
-    const Eigen::SparseMatrix<double>& L,
-    const Eigen::SparseMatrix<double>& K)
+template<
+    typename DerivedT,
+    typename DerivedM,
+    typename ScalarL,
+    typename ScalarK>
+double arap_energy(
+    const Eigen::MatrixBase<DerivedT>& T,
+    const Eigen::MatrixBase<DerivedM>& M,
+    const Eigen::SparseMatrix<ScalarL>& L,
+    const Eigen::SparseMatrix<ScalarK>& K)
 {
-    Eigen::MatrixXd sum, Tt, Mt, V, C, Ct;
+    typedef typename DerivedT::Scalar ScalarT;
+    typedef Eigen::Matrix<ScalarT, Eigen::Dynamic, Eigen::Dynamic> MatrixXT;
+    typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
+
+    MatrixXT sum, Tt, Mt, V, C, Ct;
     Mt = M.transpose();
     Tt = T.transpose();
     V = M * T;
@@ -68,8 +89,8 @@ double arap_compute(
 
     // construct matrix R
     const int size = V.rows();
-    Eigen::MatrixXd R(C.rows(), C.cols());
-    Eigen::Matrix3d Ck, Rk;
+    MatrixXT R(C.rows(), C.cols());
+    Matrix3T Ck, Rk;
     for (int k = 0; k < size; k++) {
         Ck = C.block(3 * k, 0, 3, 3);
         igl::polar_svd3x3(Ck, Rk);
@@ -80,3 +101,14 @@ double arap_compute(
     double obj = sum.trace();
     return obj;
 }
+
+
+// template specialization 
+
+template
+void arap_precompute<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1>, Eigen::Matrix<float, -1, -1, 0, -1, -1>, float, float>(Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1>
+ > const&, Eigen::SparseMatrix<float, 0, int>&, Eigen::SparseMatrix<float, 0, int>&);
+
+
+template
+double arap_energy<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<float, -1, -1, 0, -1, -1>, float, float>(Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::SparseMatrix<float, 0, int> const&, Eigen::SparseMatrix<float, 0, int> const&);
