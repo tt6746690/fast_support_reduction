@@ -10,6 +10,7 @@
 #include <cmath>
 #include <iostream>
 
+
 template <
     typename DerivedV,
     typename DerivedF>
@@ -19,7 +20,7 @@ double overhang_energy(
     const Eigen::RowVector3f& dp,
     double tau,
     int dim,
-    bool display)
+    std::vector<int>& unsafe)
 {
 
     typedef typename DerivedV::Scalar ScalarV;
@@ -60,25 +61,6 @@ double overhang_energy(
             energy += e;
         }
 
-        if (display) {
-            std::cout << "energy: " << energy << '\n';
-            // Plot the mesh with pseudocolors
-            const Eigen::RowVector3d red(255./255., 0., 0.);
-            const Eigen::RowVector3d green(0., 255./255., 0.);
-            igl::opengl::glfw::Viewer viewer;
-            viewer.data().set_mesh(V.template cast<double>().eval(), F);
-            // draw unsafe edges
-            for (int i = 0; i < unsafe.size() / 2; ++i) {
-                viewer.data().add_edges(
-                    V.row(unsafe[2*i]).template cast<double>().eval(),
-                    V.row(unsafe[2*i+1]).template cast<double>().eval(),
-                    red
-                );
-            }
-            viewer.data().show_lines = false;
-            viewer.launch();
-        }
-
     } else {
         printf("overhang energy for 3D not supported!\n");
     }
@@ -89,4 +71,4 @@ double overhang_energy(
 // template specialization
 
 template
-double overhang_energy<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1> >(Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::Matrix<float, 1, 3, 1, 1, 3> const&, double, int, bool);
+double overhang_energy<Eigen::Matrix<float, -1, -1, 0, -1, -1>, Eigen::Matrix<int, -1, -1, 0, -1, -1> >(Eigen::MatrixBase<Eigen::Matrix<float, -1, -1, 0, -1, -1> > const&, Eigen::MatrixBase<Eigen::Matrix<int, -1, -1, 0, -1, -1> > const&, Eigen::Matrix<float, 1, 3, 1, 1, 3> const&, double, int, std::vector<int>&);

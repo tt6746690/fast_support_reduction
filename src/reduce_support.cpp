@@ -2,6 +2,7 @@
 #include <igl/centroid.h>
 #include <igl/lbs_matrix.h>
 #include <igl/pso.h>
+#include <igl/min_quad_with_fixed.h>
 
 #include <algorithm>
 #include <cmath>
@@ -175,7 +176,8 @@ float reduce_support(
 
         double E_arap, E_overhang;
 
-        E_overhang = overhang_energy(U, F, dp, tau, is3d?3:2, false);
+        std::vector<int> unsafe;
+        E_overhang = overhang_energy(U, F, dp, tau, is3d?3:2, unsafe);
         E_arap = arap_energy(T, M, L, K);
 
         iter += 1;

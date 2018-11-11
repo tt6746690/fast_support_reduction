@@ -3,7 +3,9 @@
 #include <igl/readOBJ.h>
 #include <igl/readDMAT.h>
 #include <igl/slice.h>
+#include <igl/snap_points.h>
 #include <igl/opengl/glfw/Viewer.h>
+#include <igl/unproject_onto_mesh.h>
 
 #include "src/defs.h"
 #include "src/reduce_support.h"
@@ -20,11 +22,13 @@ int main(int argc, char*argv[]) {
 
     Eigen::MatrixXf V, U;
     Eigen::MatrixXi F;
+    Eigen::RowVector3f last_mouse;
+    long sel = -1;
     igl::readOBJ(DATA_PATH "woody.obj", V, F);
+    U = V;
 
     Eigen::MatrixXf W;
     igl::readDMAT(DATA_PATH "woody.dmat", W);
-
 
     double alpha_max = 0.25 * M_PI;
     Eigen::RowVector3f dp(0., 1., 0.);
@@ -44,4 +48,6 @@ int main(int argc, char*argv[]) {
     viewer.data().set_mesh(Ud, F);
     viewer.data().show_lines = false;
     viewer.launch();
+
+
 }

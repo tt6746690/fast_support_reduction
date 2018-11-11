@@ -63,9 +63,9 @@ int third_vertex(
     int v1, 
     int v2)
 {
-    for (int i = 0; i < F.size(); i++) 
+    for (int i = 0; i < F.rows(); i++) 
     {
-        Eigen::VectorXi f = F.row(i);
+        Eigen::Vector3i f = F.row(i);
         if ((v1 == f[0] || v1 == f[1] || v1 == f[2]) &&
             (v2 == f[0] || v2 == f[1] || v2 == f[2])) 
         {
@@ -84,7 +84,8 @@ int third_vertex(
 
 double self_intersection(
     const Eigen::MatrixXd V,
-    const Eigen::MatrixXi F) 
+    const Eigen::MatrixXi F,
+    std::vector<Eigen::Vector3d> & intersection) 
 {
     Eigen::VectorXi loop;
     igl::boundary_loop(F, loop);
@@ -142,16 +143,29 @@ double self_intersection(
                     {
                         int new_y = calculate_y(v1, v2, x);
                         area += new_y - y;
+                        intersection.push_back(Eigen::Vector3d(x, y, 0));
+                        intersection.push_back(Eigen::Vector3d(x, new_y, 0));
                         y = new_y;
                     }
                 }
                 else if (y != NAN) 
                 {
-                    area += calculate_y(v1, v2, x) - y;
+                    int top = calculate_y(v1, v2, x);
+                    area += top - y;
+                    intersection.push_back(Eigen::Vector3d(x, y, 0));
+                    intersection.push_back(Eigen::Vector3d(x, top, 0));
                     y = NAN;
                 }
 
-                expected_dir = (0 - levels_deep) / abs(levels_deep);
+                if (levels_deep != 0) 
+                {
+                    expected_dir = (0 - levels_deep) / abs(levels_deep);
+                } 
+                else 
+                {
+                    expected_dir = IN;
+                }
+                
             }
         }
     }

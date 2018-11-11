@@ -15,6 +15,7 @@
 //      dim,            dimension {2, 3}
 // Outputs:
 //      overhang energy E(V)
+
 template <
     typename DerivedV,
     typename DerivedF>
@@ -24,6 +25,6 @@ double overhang_energy(
     const Eigen::RowVector3f& dp,
     double tau,
     int dim,
-    bool display);
+    std::vector<int>& unsafe);
 
 #endif
