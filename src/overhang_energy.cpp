@@ -28,8 +28,8 @@ double overhang_energy(
     typedef typename DerivedF::PlainObject PlainObjectF;
 
 
-    Eigen::RowVector3f dpn;
-    dpn = dp.normalized();
+    RowVector3VT dpn;
+    dpn = dp.cast<ScalarV>().normalized();
 
     double e;
     double energy = 0;
