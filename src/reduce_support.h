@@ -10,8 +10,10 @@
 // Inputs:
 //      V   #V x 3,
 //      F   #F x 3,
-//      W   $V x m(d+1)
+//      C   (m+1) x 3          vertex position for joint (assume 1 tree)
+//      BE  m x 2              hande edge indexed into C
 //              linear blend skinning weight matrix
+//      W   #V x m(d+1)
 //      alpha_max       maximal self-supporting angle
 //      dp              normalized printing direction
 //      pso_iters       number of iterations for `pso`
@@ -32,6 +34,8 @@
 float reduce_support(
     const Eigen::MatrixXf& V,
     const Eigen::MatrixXi& F,
+    const Eigen::MatrixXf& C,
+    const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
     double alpha_max,
     const Eigen::RowVector3f& dp,

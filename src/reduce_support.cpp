@@ -3,10 +3,13 @@
 #include <igl/lbs_matrix.h>
 #include <igl/pso.h>
 #include <igl/min_quad_with_fixed.h>
+#include <igl/forward_kinematics.h>
+#include <igl/directed_edge_parents.h>
 
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <vector>
 
 #include "reduce_support.h"
 #include "overhang_energy.h"
@@ -14,19 +17,10 @@
 
 #include <iostream>
 
-Eigen::Affine3f unzip_affine(
-    const Eigen::RowVector3f& cen,
-    const Eigen::RowVector3f& th)
-{
-    Eigen::Affine3f model = Eigen::Affine3f::Identity();
-    model.translate(cen.transpose()); 
-    model.rotate(
-        Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX())*
-        Eigen::AngleAxisf(th(1), Eigen::Vector3f::UnitY())*
-        Eigen::AngleAxisf(th(2), Eigen::Vector3f::UnitZ())
-    );
-    return model;
-}
+typedef
+  std::vector<Eigen::Quaterniond, Eigen::aligned_allocator<Eigen::Quaterniond> >
+  RotationList;
+
 
 
 // convert `X` to stacked transposed transfomration for handles
@@ -34,32 +28,48 @@ Eigen::Affine3f unzip_affine(
 //  Inputs:
 //      `X` 1 x 6m
 //          flattened input to black-box optimization
+//      dT
+//          joint vertices for forward kinematics
+//      P
+//          parants for bone edges for forward kinematics
 //  Outputs:
 //      T   (d+1)m x d
 //          handle transformations
 //          Note d is 3 for both 2D/3D case
 void unzip(
     const Eigen::RowVectorXf X,
+    const std::vector<Eigen::Vector3d>& dT,
+    const Eigen::MatrixXd& C,
+    const Eigen::MatrixXi& BE,
+    const Eigen::MatrixXi& P,
     Eigen::MatrixXf& T)
 {
-    int m = X.size() / (2*3);
-    Eigen::Affine3f t;
-    Eigen::RowVector3f cen, th;
-    for (int j = 0; j < m; ++j) {
-        th  = X.segment(6*j  , 3);
-        cen = X.segment(6*j+3, 3);
-        t = unzip_affine(cen, th);
-        // std::cout << "cen: " << cen << '\n';
-        // std::cout << "th: " << th << '\n';
-        // std::cout << "transform: " << t.matrix() << '\n';
-        T.block(4*j, 0, 4, 3) = t.matrix().block(0,0,3,4).transpose();
+    // Construct list of relative rotations in terms of quaternion
+    //      from Euler's angle
+
+    RotationList dQ;
+    Eigen::RowVector3f th;
+    for (int j = 0; j < BE.rows(); ++j) {
+        th = X.segment(6*j, 3);
+        dQ.emplace_back(
+            Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *
+            Eigen::AngleAxisf(th(1), Eigen::Vector3f::UnitY()) *
+            Eigen::AngleAxisf(th(2), Eigen::Vector3f::UnitZ())
+        );
     }
+
+    // Forward kinematics
+    Eigen::MatrixXd Td;
+    igl::forward_kinematics(C, BE, P, dQ, dT, Td);
+    T = Td.cast<float>().eval();
 }
 
 
 float reduce_support(
     const Eigen::MatrixXf& V,
     const Eigen::MatrixXi& F,
+    const Eigen::MatrixXf& C,
+    const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
     double alpha_max,
     const Eigen::RowVector3f& dp,
@@ -75,6 +85,9 @@ float reduce_support(
 
     U = V;
     T.resize((d+1)*m, d);
+
+    Eigen::MatrixXd Cd;
+    Cd = C.cast<double>().eval();
 
     // ARAP
     Eigen::MatrixXd Vd = V.cast<double>().eval();
@@ -100,17 +113,28 @@ float reduce_support(
     // Overlap
     double tau = std::sin(alpha_max);
 
+    // Retrieve parents for forward kinematics
+    Eigen::MatrixXi P;
+    igl::directed_edge_parents(BE, P);
+
     // Initialize initial guess `X` and bounds `LB`, `UB`
+
     bool is3d = !(V.cols() == 3 && V.col(2).sum() == 0.);
     int dim = (2*d)*m;
     Eigen::RowVectorXf X(dim), LB(dim), UB(dim);
+
+    // find joint locations
+    std::vector<Eigen::Vector3d> dT(BE.rows());
+    for (int i = 0; i < BE.rows(); ++i) {
+        dT[i] = (C.row(BE.coeff(P(i) == -1 ? 0 : P(i), 1)).cast<double>().transpose());
+    }
 
     Eigen::RowVector3f max_coord, min_coord;
     min_coord = V.colwise().minCoeff();
     max_coord = V.colwise().maxCoeff();
 
     int k = 0;
-    float psi = M_PI / 4;
+    float psi = M_PI / 8;
 
     for (int j = 0; j < m; ++j) {
 
@@ -163,16 +187,15 @@ float reduce_support(
 
     int iter = 0;
     const std::function<float(Eigen::RowVectorXf&)> f =
-       [&iter,
+       [&iter, 
+        &dT, &Cd, &BE, &P,                           // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
         &tau, &dp, &is3d                            // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
-        unzip(X, T);
+        unzip(X, dT, Cd, BE, P, T);
         U = M*T;
-
-        // std::cout << "U: " << U.topRows(5) << '\n';
 
         double E_arap, E_overhang;
 
@@ -191,7 +214,7 @@ float reduce_support(
     // Optimization
 
     auto fX = igl::pso(f, LB, UB, pso_iters, pso_population, X);
-    unzip(X, T);
+    unzip(X, dT, Cd, BE, P, T);
     U = M * T;
 
     return fX;
