@@ -5,6 +5,8 @@
 #include <igl/min_quad_with_fixed.h>
 #include <igl/forward_kinematics.h>
 #include <igl/directed_edge_parents.h>
+#include <igl/deform_skeleton.h>
+#include <igl/opengl/glfw/Viewer.h>
 
 #include <algorithm>
 #include <cmath>
@@ -60,7 +62,7 @@ void unzip(
 
     // Forward kinematics
     Eigen::MatrixXd Td;
-    igl::forward_kinematics(C, BE, P, dQ, dT, Td);
+    igl::forward_kinematics(C, BE, P, dQ, Td);
     T = Td.cast<float>().eval();
 }
 
@@ -126,7 +128,7 @@ float reduce_support(
     // find joint locations
     std::vector<Eigen::Vector3d> dT(BE.rows());
     for (int i = 0; i < BE.rows(); ++i) {
-        dT[i] = (C.row(BE.coeff(P(i) == -1 ? 0 : P(i), 1)).cast<double>().transpose());
+        dT[i] = C.row(BE.coeff(P(i) == -1 ? 0 : P(i), 1) - 1).cast<double>().transpose();
     }
 
     Eigen::RowVector3f max_coord, min_coord;
@@ -188,7 +190,7 @@ float reduce_support(
     int iter = 0;
     const std::function<float(Eigen::RowVectorXf&)> f =
        [&iter, 
-        &dT, &Cd, &BE, &P,                           // forward kinematics
+        &dT, &Cd, &BE, &P,                          // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
         &tau, &dp, &is3d                            // overhang
@@ -216,6 +218,25 @@ float reduce_support(
     auto fX = igl::pso(f, LB, UB, pso_iters, pso_population, X);
     unzip(X, dT, Cd, BE, P, T);
     U = M * T;
+
+    // Plotting
+    Eigen::MatrixXd Ud;
+    Ud = U.cast<double>().eval();
+    const Eigen::RowVector3d red(1., 0., 0.);
+    const Eigen::RowVector3d green(0., 1., 0.);
+    const Eigen::RowVector3d blue(0., 1., 0.);
+    igl::opengl::glfw::Viewer viewer;
+    viewer.data().set_mesh(Ud, F);
+    Eigen::MatrixXd CT;
+    Eigen::MatrixXi BET;
+    igl::deform_skeleton(Cd, BE, T.cast<double>().eval(), CT, BET);
+    viewer.data().add_points(CT, red);       // joint
+    viewer.data().set_edges(CT, BET, red);    // bone
+    for (int i = 0; i < dT.size(); ++i) {
+        viewer.data().add_edges(Eigen::RowVector3d(0,0,0), (Eigen::RowVector3d)dT[i], blue);
+    }
+    viewer.data().show_lines = false;
+    viewer.launch();
 
     return fX;
 }

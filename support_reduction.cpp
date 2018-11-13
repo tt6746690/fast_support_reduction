@@ -43,30 +43,9 @@ int main(int argc, char*argv[]) {
     double alpha_max = 0.25 * M_PI;
     Eigen::RowVector3f dp(0., 1., 0.);
     dp.normalize();
-    int pso_iters = 1;
-    int pso_populations = 1;
+    int pso_iters = 20;
+    int pso_populations = 20;
     Eigen::MatrixXf T;
 
     reduce_support(V, F, C, BE, W, alpha_max, dp, pso_iters, pso_populations, T, U);
-
-    // Plot the mesh with pseudocolors
-    Eigen::MatrixXd Ud;
-    Ud = U.cast<double>().eval();
-
-    const Eigen::RowVector3d red(1., 0., 0.);
-    const Eigen::RowVector3d green(0., 1., 0.);
-    igl::opengl::glfw::Viewer viewer;
-    viewer.data().set_mesh(Ud, F);
-
-    // transformed bone edges
-    Eigen::MatrixXd CT;
-    Eigen::MatrixXi BET;
-    igl::deform_skeleton(Cd, BE, T.cast<double>().eval(), CT, BET);
-    viewer.data().add_points(CT, red);       // joint
-    viewer.data().set_edges(CT, BET, red);    // bone
-
-    std::cout << "W sice: " << W.middleRows(243-1, 10) << "\n";
-
-    viewer.data().show_lines = false;
-    viewer.launch();
 }
