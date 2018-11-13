@@ -27,19 +27,28 @@ int main(int argc, char*argv[]) {
 
     std::string filename = "woody";
     int pso_iters = 1;
-    int pso_populations = 1;
+    int pso_population = 1;
+    double c_arap = 1;
+    double c_overhang = 1;
 
     if (argc == 2) {
         filename = argv[1];
     }
     if (argc == 3) {
         pso_iters = std::stoi(argv[1]);
-        pso_populations = std::stoi(argv[2]);
+        pso_population = std::stoi(argv[2]);
     }
     if (argc == 4) {
         filename = argv[1];
         pso_iters = std::stoi(argv[2]);
-        pso_populations = std::stoi(argv[3]);
+        pso_population = std::stoi(argv[3]);
+    }
+    if (argc == 6) {
+        filename = argv[1];
+        pso_iters = std::stoi(argv[2]);
+        pso_population = std::stoi(argv[3]);
+        c_arap = std::stod(argv[4]);
+        c_overhang = std::stod(argv[5]);
     }
 
     Eigen::MatrixXf V, U;
@@ -58,10 +67,18 @@ int main(int argc, char*argv[]) {
     igl::readTGF(DATA_PATH+filename+".tgf", Cd, BE);
     C = Cd.cast<float>();
 
-    double alpha_max = 0.25 * M_PI;
-    Eigen::RowVector3f dp(0., 1., 0.);
-    dp.normalize();
-    Eigen::MatrixXf T;
 
-    reduce_support(V, F, C, BE, W, alpha_max, dp, pso_iters, pso_populations, T, U);
+    ReduceSupportConfig config;
+    config.alpha_max = 0.25 * M_PI;
+    config.dp = Eigen::RowVector3f(0., 1., 0.);
+    config.rotation_angle = M_PI / 4;
+    config.pso_iters = pso_iters;
+    config.pso_population = pso_population;
+    config.c_arap = c_arap;
+    config.c_overhang = c_overhang;
+    config.display = true;
+
+
+    Eigen::MatrixXf T;
+    reduce_support(V, F, C, BE, W, config, T, U);
 }

@@ -3,6 +3,30 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 
+
+class ReduceSupportConfig{
+public: 
+    ReduceSupportConfig();
+public:
+
+    // overhang
+    double alpha_max;
+    Eigen::RowVector3f dp;
+
+    // pso
+    double rotation_angle;
+    int pso_iters;
+    int pso_population;
+
+    // coefficients to energy 
+    double c_arap;
+    double c_overhang;
+    double c_intersect;
+
+    bool display;
+};
+
+
 // Given mesh (V, F), find minimizer of energy using particle swarm optimization
 //      
 //      E = E_{arap} + E_{overhang} + E_{overlap},      where \bx ∈ \R^{2dm}
@@ -37,10 +61,7 @@ float reduce_support(
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
-    double alpha_max,
-    const Eigen::RowVector3f& dp,
-    int pso_iters,
-    int pso_population,
+    const ReduceSupportConfig& config,
     Eigen::MatrixXf& T,
     Eigen::MatrixXf& U);
 

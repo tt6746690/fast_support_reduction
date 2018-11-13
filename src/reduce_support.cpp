@@ -23,6 +23,17 @@ typedef
   std::vector<Eigen::Quaterniond, Eigen::aligned_allocator<Eigen::Quaterniond> >
   RotationList;
 
+ReduceSupportConfig::ReduceSupportConfig()
+:   alpha_max(0.25*M_PI), 
+    dp(0.,1.,0.),
+    rotation_angle(0.25*M_PI),
+    pso_iters(1),
+    pso_population(1),
+    c_arap(1),
+    c_overhang(1),
+    c_intersect(1),
+    display(false)
+{}
 
 
 // convert `X` to stacked transposed transfomration for handles
@@ -70,10 +81,7 @@ float reduce_support(
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
-    double alpha_max,
-    const Eigen::RowVector3f& dp,
-    int pso_iters,
-    int pso_population,
+    const ReduceSupportConfig& config,
     Eigen::MatrixXf& T,
     Eigen::MatrixXf& U)
 {
@@ -110,7 +118,7 @@ float reduce_support(
     arap_precompute(V, F, M, L, K);
 
     // Overlap
-    double tau = std::sin(alpha_max);
+    double tau = std::sin(config.alpha_max);
 
     // Retrieve parents for forward kinematics
     Eigen::MatrixXi P;
@@ -129,7 +137,6 @@ float reduce_support(
     }
 
     int k = 0;
-    float psi = M_PI / 8;
 
     for (int j = 0; j < m; ++j) {
 
@@ -141,21 +148,21 @@ float reduce_support(
         X(k+2) = 0;
 
         if (is3d) {
-            LB(k)   = -psi;
-            LB(k+1) = -psi;
-            LB(k+2) = -psi;
-            UB(k)   = psi;
-            UB(k+1) = psi;
-            UB(k+2) = psi;
+            LB(k)   = -config.rotation_angle;
+            LB(k+1) = -config.rotation_angle;
+            LB(k+2) = -config.rotation_angle;
+            UB(k)   =  config.rotation_angle;
+            UB(k+1) =  config.rotation_angle;
+            UB(k+2) =  config.rotation_angle;
         } else {
             // 2D rotation on {x,y}-plane amounts to 
             //      fixing rotation around {x,y}-axis, and allow rotation around z-axis
             LB(k)   = 0;
             LB(k+1) = 0;
-            LB(k+2) = -psi;
+            LB(k+2) = -config.rotation_angle;
             UB(k)   = 0;
             UB(k+1) = 0;
-            UB(k+2) = psi;
+            UB(k+2) =  config.rotation_angle;
         }
     }
     
@@ -163,11 +170,11 @@ float reduce_support(
 
     int iter = 0;
     const std::function<float(Eigen::RowVectorXf&)> f =
-       [&iter, 
+       [&iter, &config,
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
-        &tau, &dp, &is3d                            // overhang
+        &tau, &is3d                                 // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
         unzip(X, Cd, BE, P, T);
@@ -176,22 +183,27 @@ float reduce_support(
         double E_arap, E_overhang;
 
         std::vector<int> unsafe;
-        E_overhang = overhang_energy(U, F, dp, tau, is3d?3:2, unsafe);
+        E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
         E_arap = arap_energy(T, M, L, K);
 
         iter += 1;
+        float fX = (float) (config.c_arap * E_arap +  config.c_overhang * E_overhang);
 
-        float fX = (float) (0.0001*E_arap + E_overhang);
-        std::cout << "iter: " << iter << "; f(X) = " << fX <<
-            "\t\tEarap: " << 0.0001*E_arap << " Eoverhang: " << E_overhang << '\n';
+        std::cout<<"["<<iter<<"] f(X): "<<fX<<
+            "\t\t("<<config.c_arap*E_arap<<","<<config.c_overhang*E_overhang<<")\n";
+
         return fX;
     };
 
     // Optimization
 
-    auto fX = igl::pso(f, LB, UB, pso_iters, pso_population, X);
+    auto fX = igl::pso(f, LB, UB, config.pso_iters, config.pso_population, X);
     unzip(X, Cd, BE, P, T);
     U = M * T;
+
+    if (!config.display) {
+        return fX;
+    }
 
     // Plotting
     int selected = 0;
