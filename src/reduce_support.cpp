@@ -16,6 +16,7 @@
 #include "reduce_support.h"
 #include "overhang_energy.h"
 #include "arap_energy.h"
+#include "self_intersection.h"
 
 #include <iostream>
 
@@ -180,17 +181,25 @@ float reduce_support(
         unzip(X, Cd, BE, P, T);
         U = M*T;
 
-        double E_arap, E_overhang;
+        double E_arap, E_overhang, E_intersect;
 
         std::vector<int> unsafe;
         E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
+
         E_arap = arap_energy(T, M, L, K);
+        E_intersect = 1;
 
         iter += 1;
-        float fX = (float) (config.c_arap * E_arap +  config.c_overhang * E_overhang);
+        float fX = (float) (
+            config.c_arap * E_arap +  
+            config.c_overhang * E_overhang + 
+            config.c_intersect * E_intersect
+        );
 
         std::cout<<"["<<iter<<"] f(X): "<<fX<<
-            "\t\t("<<config.c_arap*E_arap<<","<<config.c_overhang*E_overhang<<")\n";
+            "\t\t("<<config.c_arap*E_arap<<", "<<
+            config.c_overhang*E_overhang<<", "<<
+            config.c_intersect*E_intersect<<")\n";
 
         return fX;
     };
