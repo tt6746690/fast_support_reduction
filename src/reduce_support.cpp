@@ -30,8 +30,8 @@ typedef
 //  Inputs:
 //      `X` 1 x 6m
 //          flattened input to black-box optimization
-//      P
-//          parants for bone edges for forward kinematics
+//      C, BE, P
+//          arguments for forward kinematics
 //  Outputs:
 //      T   (d+1)m x d
 //          handle transformations
@@ -164,7 +164,7 @@ float reduce_support(
     int iter = 0;
     const std::function<float(Eigen::RowVectorXf&)> f =
        [&iter, 
-        &Cd, &BE, &P,                          // forward kinematics
+        &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
         &tau, &dp, &is3d                            // overhang
@@ -181,9 +181,9 @@ float reduce_support(
 
         iter += 1;
 
-        float fX = (float) (0.001*E_arap + 0.5*E_overhang);
+        float fX = (float) (0.0001*E_arap + E_overhang);
         std::cout << "iter: " << iter << "; f(X) = " << fX <<
-            "Earap: " << 0.001*E_arap << " Eoverhang: " << E_overhang << '\n';
+            "\t\tEarap: " << 0.0001*E_arap << " Eoverhang: " << E_overhang << '\n';
         return fX;
     };
 
@@ -194,22 +194,50 @@ float reduce_support(
     U = M * T;
 
     // Plotting
+    int selected = 0;
     Eigen::MatrixXd Ud;
     Ud = U.cast<double>().eval();
     const Eigen::RowVector3d red(1., 0., 0.);
     const Eigen::RowVector3d green(0., 1., 0.);
     const Eigen::RowVector3d blue(0., 1., 0.);
     igl::opengl::glfw::Viewer viewer;
+    const auto set_color = [&](igl::opengl::glfw::Viewer &viewer) {
+            Eigen::MatrixXd CC;
+            igl::jet(W.col(selected).eval(),true,CC);
+            viewer.data().set_colors(CC);
+        };
+    set_color(viewer);
     viewer.data().set_mesh(Ud, F);
     Eigen::MatrixXd CT;
     Eigen::MatrixXi BET;
     igl::deform_skeleton(Cd, BE, T.cast<double>().eval(), CT, BET);
-    viewer.data().add_points(CT, red);       // joint
+    viewer.data().add_points(CT, red);        // joint
     viewer.data().set_edges(CT, BET, red);    // bone
     for (int i = 0; i < dT.size(); ++i) {
         viewer.data().add_edges(Eigen::RowVector3d(0,0,0), (Eigen::RowVector3d)dT[i], blue);
     }
+    viewer.data().compute_normals();
+    viewer.data().set_normals(viewer.data().F_normals);
     viewer.data().show_lines = false;
+    viewer.callback_key_down = 
+        [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
+            switch(key) {
+                case '.':
+                    selected++;
+                    selected = std::min(std::max(selected,0),(int)W.cols()-1);
+                    set_color(viewer);
+                    break;
+                case ',':
+                    selected--;
+                    selected = std::min(std::max(selected,0),(int)W.cols()-1);
+                    set_color(viewer);
+                    break;
+            }
+            return true;
+        };
+    std::cout<<
+        "Press '.' to show next weight function.\n"<<
+        "Press ',' to show previous weight function.\n";
     viewer.launch();
 
     return fX;
