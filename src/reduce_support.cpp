@@ -30,8 +30,6 @@ typedef
 //  Inputs:
 //      `X` 1 x 6m
 //          flattened input to black-box optimization
-//      dT
-//          joint vertices for forward kinematics
 //      P
 //          parants for bone edges for forward kinematics
 //  Outputs:
@@ -40,7 +38,6 @@ typedef
 //          Note d is 3 for both 2D/3D case
 void unzip(
     const Eigen::RowVectorXf X,
-    const std::vector<Eigen::Vector3d>& dT,
     const Eigen::MatrixXd& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXi& P,
@@ -52,7 +49,7 @@ void unzip(
     RotationList dQ;
     Eigen::RowVector3f th;
     for (int j = 0; j < BE.rows(); ++j) {
-        th = X.segment(6*j, 3);
+        th = X.segment(3*j, 3);
         dQ.emplace_back(
             Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *
             Eigen::AngleAxisf(th(1), Eigen::Vector3f::UnitY()) *
@@ -122,7 +119,7 @@ float reduce_support(
     // Initialize initial guess `X` and bounds `LB`, `UB`
 
     bool is3d = !(V.cols() == 3 && V.col(2).sum() == 0.);
-    int dim = (2*d)*m;
+    int dim = d*m;
     Eigen::RowVectorXf X(dim), LB(dim), UB(dim);
 
     // find joint locations
@@ -131,16 +128,12 @@ float reduce_support(
         dT[i] = C.row(BE.coeff(P(i) == -1 ? 0 : P(i), 1) - 1).cast<double>().transpose();
     }
 
-    Eigen::RowVector3f max_coord, min_coord;
-    min_coord = V.colwise().minCoeff();
-    max_coord = V.colwise().maxCoeff();
-
     int k = 0;
     float psi = M_PI / 8;
 
     for (int j = 0; j < m; ++j) {
 
-        k = 2*d*j;
+        k = d*j;
 
         // rotation 
         X(k)   = 0;
@@ -164,25 +157,6 @@ float reduce_support(
             UB(k+1) = 0;
             UB(k+2) = psi;
         }
-
-        k += 3;
-        // translation
-        X(k)   = 0;
-        X(k+1) = 0;
-        X(k+2) = 0;
-        LB(k)   = 0;
-        LB(k+1) = 0;
-        LB(k+2) = 0;
-        UB(k)   = 0;
-        UB(k+1) = 0;
-        UB(k+2) = 0;
-
-        // LB(k)   = min_coord(0);
-        // LB(k+1) = min_coord(1);
-        // LB(k+2) = is3d ? min_coord(2) : 0;
-        // UB(k)   = max_coord(0);
-        // UB(k+1) = max_coord(1);
-        // UB(k+2) = is3d ? max_coord(2) : 0;
     }
     
     // Energy function
@@ -190,13 +164,13 @@ float reduce_support(
     int iter = 0;
     const std::function<float(Eigen::RowVectorXf&)> f =
        [&iter, 
-        &dT, &Cd, &BE, &P,                          // forward kinematics
+        &Cd, &BE, &P,                          // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
         &tau, &dp, &is3d                            // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
-        unzip(X, dT, Cd, BE, P, T);
+        unzip(X, Cd, BE, P, T);
         U = M*T;
 
         double E_arap, E_overhang;
@@ -207,16 +181,16 @@ float reduce_support(
 
         iter += 1;
 
-        float fX = (float) (0.00001*E_arap + 0.5*E_overhang);
+        float fX = (float) (0.001*E_arap + 0.5*E_overhang);
         std::cout << "iter: " << iter << "; f(X) = " << fX <<
-            "Earap: " << 0.00001*E_arap << " Eoverhang: " << E_overhang << '\n';
+            "Earap: " << 0.001*E_arap << " Eoverhang: " << E_overhang << '\n';
         return fX;
     };
 
     // Optimization
 
     auto fX = igl::pso(f, LB, UB, pso_iters, pso_population, X);
-    unzip(X, dT, Cd, BE, P, T);
+    unzip(X, Cd, BE, P, T);
     U = M * T;
 
     // Plotting
