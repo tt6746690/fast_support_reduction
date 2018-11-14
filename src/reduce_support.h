@@ -3,6 +3,30 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 
+
+class ReduceSupportConfig{
+public: 
+    ReduceSupportConfig();
+public:
+
+    // overhang
+    double alpha_max;
+    Eigen::RowVector3f dp;
+
+    // pso
+    double rotation_angle;
+    int pso_iters;
+    int pso_population;
+
+    // coefficients to energy 
+    double c_arap;
+    double c_overhang;
+    double c_intersect;
+
+    bool display;
+};
+
+
 // Given mesh (V, F), find minimizer of energy using particle swarm optimization
 //      
 //      E = E_{arap} + E_{overhang} + E_{overlap},      where \bx ∈ \R^{2dm}
@@ -10,8 +34,10 @@
 // Inputs:
 //      V   #V x 3,
 //      F   #F x 3,
-//      W   $V x m(d+1)
+//      C   (m+1) x 3          vertex position for joint (assume 1 tree)
+//      BE  m x 2              hande edge indexed into C
 //              linear blend skinning weight matrix
+//      W   #V x m(d+1)
 //      alpha_max       maximal self-supporting angle
 //      dp              normalized printing direction
 //      pso_iters       number of iterations for `pso`
@@ -32,11 +58,10 @@
 float reduce_support(
     const Eigen::MatrixXf& V,
     const Eigen::MatrixXi& F,
+    const Eigen::MatrixXf& C,
+    const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
-    double alpha_max,
-    const Eigen::RowVector3f& dp,
-    int pso_iters,
-    int pso_population,
+    const ReduceSupportConfig& config,
     Eigen::MatrixXf& T,
     Eigen::MatrixXf& U);
 
