@@ -3,8 +3,8 @@
 #include <Eigen/Sparse>
 #include <Eigen/Core>
 
-#define IN 1
-#define OUT -1
+#define POS 1
+#define NEG -1
 
 // Return the self-intersecting area.
 //

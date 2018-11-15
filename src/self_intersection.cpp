@@ -22,7 +22,7 @@ bool sort_by_y(
     const Edge e1,
     const Edge e2)
 {
-    return e1.p1.coord[1] < e2.p1.coord[1];
+    return std::min(e1.p1.coord[1], e1.p2.coord[1]) < std::min(e2.p1.coord[1], e2.p2.coord[1]);
 }
 
 double calculate_y(
@@ -33,53 +33,6 @@ double calculate_y(
     double m = (v2[1] - v1[1]) / (v2[0] - v1[0]);
     double b = v1[1] - m * v1[0];
     return m * x + b;
-}
-
-bool projection_below(
-    const Eigen::VectorXd v1,
-    const Eigen::VectorXd v2,
-    const Eigen::VectorXd v3)
-{
-    double y = calculate_y(v1, v2, v3[0]);
-    return y < v3[1];
-}
-
-bool going_in(
-    const Eigen::VectorXd v1,
-    const Eigen::VectorXd v2,
-    const Eigen::VectorXd v3)
-{
-    if ((v3[1] > v1[1] && v3[1] > v2[1]) || 
-        projection_below(v1, v2, v3))
-    {
-        return true;
-    }
-    
-    return false;
-}
-
-int third_vertex(
-    const Eigen::MatrixXi F, 
-    int v1, 
-    int v2)
-{
-    for (int i = 0; i < F.rows(); i++) 
-    {
-        Eigen::Vector3i f = F.row(i);
-        if ((v1 == f[0] || v1 == f[1] || v1 == f[2]) &&
-            (v2 == f[0] || v2 == f[1] || v2 == f[2])) 
-        {
-            for (int j = 0; j < 2; j++) 
-            {
-                if (v1 != f[j] && v2 != f[j]) 
-                {
-                    return f[j];
-                }
-            }
-        }
-    }
-
-    return -1;
 }
 
 double self_intersection(
@@ -101,8 +54,8 @@ double self_intersection(
         p2.coord = V.row(p2.index);
         
         Edge e;
-        e.p1 = p1.coord[1] < p2.coord[1] ? p1 : p2;
-        e.p2 = p1.coord == e.p1.coord ? p2 : p1;
+        e.p1 = p1;
+        e.p2 = p2;
 
         boundary_vertices.push_back(V.row(loop[i]));
         boundary_edges.push_back(e);
@@ -112,13 +65,14 @@ double self_intersection(
     std::sort(boundary_edges.begin(), boundary_edges.end(), sort_by_y);
 
     double area = 0;
-    double y = NAN;
+    double y;
 
     for (int i = 0; i < boundary_vertices.size() - 1; i++)
     {
         double x = 0.5 * ((boundary_vertices[i])[0] + (boundary_vertices[i + 1])[0]);
-        int expected_dir = IN;
+        int expected_dir;
         int levels_deep = 0;
+        int prev_depth = 0;
         
         for (int j = 0; j < boundary_edges.size(); j++) 
         {
@@ -126,16 +80,25 @@ double self_intersection(
             Eigen::VectorXd v1 = e.p1.coord;
             Eigen::VectorXd v2 = e.p2.coord;
 
+            // are we crossing?
             if (((x >= v1[0] && x <= v2[0]) || (x <= v1[0] && x >= v2[0])) &&
                 (v1[0] != v2[0]))
             {
-                Eigen::VectorXd v3 = V.row(third_vertex(F, e.p1.index, e.p2.index));
-                int actual_dir = going_in(v1, v2, v3) ? IN : OUT;
+                int actual_dir = v1[0] > v2[0] ? POS : NEG;
+                prev_depth = levels_deep;
                 levels_deep += actual_dir;
 
-                if (expected_dir != actual_dir) 
+                // first time crossing our shape
+                if (abs(levels_deep) == 1 && abs(prev_depth == 0))
                 {
-                    if (y == NAN) 
+                    // set expected dir to be opposite actual dir for next iteration
+                    expected_dir = -1 * actual_dir;
+                }
+
+                else if (expected_dir != actual_dir) 
+                {
+                    // just entered self-intersection
+                    if (abs(levels_deep) == 2) 
                     {
                         y = calculate_y(v1, v2, x);
                     }
@@ -148,24 +111,19 @@ double self_intersection(
                         y = new_y;
                     }
                 }
-                else if (y != NAN) 
+                else if (abs(levels_deep) == 1 && abs(prev_depth) != 0)
                 {
-                    int top = calculate_y(v1, v2, x);
-                    area += top - y;
+                    int new_y = calculate_y(v1, v2, x);
+                    area += new_y - y;
                     intersection.push_back(Eigen::Vector3d(x, y, 0));
-                    intersection.push_back(Eigen::Vector3d(x, top, 0));
-                    y = NAN;
+                    intersection.push_back(Eigen::Vector3d(x, new_y, 0));
+                    y = new_y;
                 }
 
                 if (levels_deep != 0) 
                 {
                     expected_dir = (0 - levels_deep) / abs(levels_deep);
-                } 
-                else 
-                {
-                    expected_dir = IN;
                 }
-                
             }
         }
     }
