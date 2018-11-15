@@ -97,22 +97,36 @@ int main(int argc, char*argv[]) {
         else
         {
             arap_single_iteration(arap_data, arap_K, s.CU, U);
-            std::vector<int> unsafe;
-            auto e = overhang_energy(U, F, dp, tau, unsafe);
+            //std::vector<int> unsafe;
+            //auto e = overhang_energy(U, F, dp, tau, unsafe);
             
             viewer.data().clear();
             viewer.data().set_mesh(U, F);
             viewer.data().set_colors(yellow);
             viewer.data().set_points(s.CU, green);
             // draw unsafe edges
-            for (int i = 0; i < unsafe.size() / 2; ++i) 
+            /*for (int i = 0; i < unsafe.size() / 2; ++i) 
             {
                 viewer.data().add_edges(
                     U.row(unsafe[2 * i]),
                     U.row(unsafe[2 * i + 1]),
                     red
                 );
+            }*/
+
+            std::vector<Eigen::Vector3d> intersections;
+            double in = self_intersection(U, F, intersections);
+            std::cout << "intersection energy: " << in << std::endl;
+            
+            // draw intersecting edges
+            for (int i = 0; i < intersections.size() / 2; ++i) {
+                viewer.data().add_edges(
+                    (intersections[2 * i]).transpose(),
+                    (intersections[2 * i + 1]).transpose(),
+                    red
+                );
             }
+
         }
         viewer.data().compute_normals();
     };
@@ -257,13 +271,26 @@ int main(int argc, char*argv[]) {
         if (viewer.core.is_animating && !s.placing_handles)
         {
             arap_single_iteration(arap_data, arap_K, s.CU, U);
-            std::vector<int> unsafe;
+            /*std::vector<int> unsafe;
             auto e = overhang_energy(U, F, dp, tau, unsafe);
             // draw unsafe edges
             for (int i = 0; i < unsafe.size() / 2; ++i) {
                 viewer.data().add_edges(
                     U.row(unsafe[2 * i]),
                     U.row(unsafe[2 * i + 1]),
+                    red
+                );
+            }*/
+
+            std::vector<Eigen::Vector3d> intersections;
+            double in = self_intersection(U, F, intersections);
+            std::cout << "intersection energy: " << in << std::endl;
+
+            // draw intersecting edges
+            for (int i = 0; i < intersections.size() / 2; ++i) {
+                viewer.data().add_edges(
+                    (intersections[2 * i]).transpose(),
+                    (intersections[2 * i + 1]).transpose(),
                     red
                 );
             }
