@@ -9,6 +9,7 @@
 #include <igl/unproject_onto_mesh.h>
 #include <igl/mat_max.h>
 #include <igl/deform_skeleton.h>
+#include <igl/normalize_row_sums.h>
 
 #include "src/defs.h"
 #include "src/reduce_support.h"
@@ -64,6 +65,8 @@ int main(int argc, char*argv[]) {
 
     Eigen::MatrixXf W;
     igl::readDMAT(DATA_PATH+filename+".dmat", W);
+    // do normalization before lbs
+    igl::normalize_row_sums(W, W);
 
     Eigen::MatrixXd Cd;
     Eigen::MatrixXf C;

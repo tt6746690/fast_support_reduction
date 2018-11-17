@@ -75,13 +75,17 @@ void arap_single_iteration(
 // Outputs:
 //   arap energy
 template<
+    typename DerivedV,
     typename DerivedT,
     typename DerivedM,
+    typename DerivedF,
     typename ScalarL,
     typename ScalarK>
 double arap_energy(
+    const Eigen::MatrixBase<DerivedV>& V,
     const Eigen::MatrixBase<DerivedT>& T,
     const Eigen::MatrixBase<DerivedM>& M,
+    const Eigen::MatrixBase<DerivedF>& F,
     const Eigen::SparseMatrix<ScalarL>& L,
     const Eigen::SparseMatrix<ScalarK>& K);
 

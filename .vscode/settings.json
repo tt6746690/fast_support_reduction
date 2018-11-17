@@ -19,7 +19,16 @@
         "cfenv": "cpp",
         "core": "cpp",
         "iostream": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "cctype": "cpp",
+        "cinttypes": "cpp",
+        "cmath": "cpp",
+        "cstdint": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cwchar": "cpp",
+        "cwctype": "cpp",
+        "variant": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }
