@@ -183,22 +183,15 @@ float reduce_support(
         &tau, &is3d                                 // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
-        // std::cout << "X: " << X << std::endl;
-
-
         unzip(X, Cd, BE, P, T);
         U = M * T;
-
-        // std::cout << "U: " << U.topRows(5) << std::endl;
 
         double E_arap, E_overhang, E_intersect;
 
         std::vector<int> unsafe;
         E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
-        // E_overhang = 0;
 
         E_arap = arap_energy(V, T, M, F, L, K);
-        // E_arap = 0;
 
         E_intersect = 0;
 

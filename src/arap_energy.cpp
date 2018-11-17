@@ -106,12 +106,9 @@ double arap_energy(
     typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
     typedef Eigen::Matrix<ScalarT, 3, 1> Vector3T;
 
-    MatrixXT sum, Tt, Mt, U, C, Ct;
-    Mt = M.transpose();
-    Tt = T.transpose();
+    MatrixXT U, C;
     U = M * T;
     C = K.transpose() * U;
-    Ct = C.transpose();
 
     // construct matrix R
     const int size = U.rows();
@@ -122,6 +119,8 @@ double arap_energy(
         igl::polar_svd3x3(Ck, Rk);
         R.block(3 * k, 0, 3, 3) = Rk;
     }
+
+
 
     double obj = 0;
     int a, b;
