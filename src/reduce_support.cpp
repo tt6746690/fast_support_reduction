@@ -166,28 +166,41 @@ float reduce_support(
             UB(k+2) =  config.rotation_angle;
         }
     }
+
+
+
+    // track global minimum
+    Eigen::RowVectorXf Xt(dim);
     
     // Energy function
 
     int iter = 0;
     const std::function<float(Eigen::RowVectorXf&)> f =
-       [&iter, &config,
+       [&iter, &config, &V,
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
         &tau, &is3d                                 // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
+        // std::cout << "X: " << X << std::endl;
+
+
         unzip(X, Cd, BE, P, T);
-        U = M*T;
+        U = M * T;
+
+        // std::cout << "U: " << U.topRows(5) << std::endl;
 
         double E_arap, E_overhang, E_intersect;
 
         std::vector<int> unsafe;
-        E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
+        // E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
+        E_overhang = 0;
 
-        E_arap = arap_energy(T, M, L, K);
-        E_intersect = 1;
+        E_arap = arap_energy(V, T, M, F, L, K);
+        // E_arap = 0;
+
+        E_intersect = 0;
 
         iter += 1;
         float fX = (float) (
