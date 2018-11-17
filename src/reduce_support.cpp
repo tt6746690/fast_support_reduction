@@ -167,10 +167,6 @@ float reduce_support(
         }
     }
 
-
-
-    // track global minimum
-    Eigen::RowVectorXf Xt(dim);
     
     // Energy function
 

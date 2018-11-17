@@ -9,6 +9,7 @@
 #include <igl/unproject_onto_mesh.h>
 #include <igl/mat_max.h>
 #include <igl/deform_skeleton.h>
+#include <igl/normalize_row_sums.h>
 
 #include "src/defs.h"
 #include "src/reduce_support.h"
