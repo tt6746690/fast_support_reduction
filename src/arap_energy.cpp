@@ -127,7 +127,7 @@ double arap_energy(
     int a, b;
     double coeff;
     Matrix3T R_a;
-    Vector3T new_vec, old_vec, old_vec_T, trans_old_vec;
+    Vector3T new_vec, old_vec, old_vec_T, trans_old_vec, diff_vec;
     for (int i = 0; i < F.rows(); i++) {
         for (int j = 0; j < 3; j++) {
             a = F(i, j % 3);
@@ -138,7 +138,8 @@ double arap_energy(
             old_vec_T = old_vec.transpose();
             coeff = L.coeff(a, b);
             trans_old_vec = R_a * old_vec_T;
-            double diff = coeff * trans_old_vec.norm() * trans_old_vec.norm() * 1.0 / 6;
+            diff_vec = new_vec - trans_old_vec;
+            double diff = coeff * diff_vec.norm() * diff_vec.norm() * 1.0 / 6;
             obj += diff;
         }
     }

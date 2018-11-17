@@ -194,8 +194,8 @@ float reduce_support(
         double E_arap, E_overhang, E_intersect;
 
         std::vector<int> unsafe;
-        // E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
-        E_overhang = 0;
+        E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
+        // E_overhang = 0;
 
         E_arap = arap_energy(V, T, M, F, L, K);
         // E_arap = 0;
