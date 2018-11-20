@@ -7,6 +7,10 @@
 #include <igl/directed_edge_parents.h>
 #include <igl/deform_skeleton.h>
 #include <igl/opengl/glfw/Viewer.h>
+#include <igl/mode.h>
+#include <igl/slice.h>
+#include <igl/group_sum_matrix.h>
+#include <igl/repdiag.h>
 
 #include <algorithm>
 #include <cmath>
@@ -110,6 +114,17 @@ float reduce_support(
         igl::partition(Wd, n_groups, G, S, D);
     }
 
+    Eigen::Matrix<int, Eigen::Dynamic, 1> GG;
+    Eigen::MatrixXi GF(F.rows(), F.cols());
+    for (int j = 0; j < F.cols(); j++) {
+        Eigen::Matrix<int, Eigen::Dynamic, 1> GFj;
+        igl::slice(G, F.col(j), GFj);
+        GF.col(j) = GFj;
+    }
+    igl::mode<int>(GF, 2, GG);
+    Eigen::SparseMatrix<double> G_sum;
+    igl::group_sum_matrix(GG, G_sum);
+
     Eigen::MatrixXd Md;
     igl::lbs_matrix(Vd, Wd, Md);
     Eigen::MatrixXf M;
@@ -118,7 +133,20 @@ float reduce_support(
     Eigen::SparseMatrix<float> L, K;
     arap_precompute(V, F, M, L, K);
 
-    // Overlap
+    // // ------------ Dimension: now d------------ //
+    // Eigen::SparseMatrix<double> G_sum_dim;
+    // igl::repdiag(G_sum, d, G_sum_dim);
+    // Eigen::SparseMatrix<double> Kd;
+    // Kd = K.cast<double>().eval();
+    // Kd = G_sum_dim * Kd * Md;
+    // K = Kd.cast<float>().eval();
+
+    // std::cout << "Rows: " << K.rows() << std::endl;
+    // std::cout << "Cols: " << K.cols() << std::endl;
+
+
+
+    // Overhang
     double tau = std::sin(config.alpha_max);
 
     // Retrieve parents for forward kinematics
