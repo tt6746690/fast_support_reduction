@@ -11,6 +11,9 @@
 #include <igl/slice.h>
 #include <igl/group_sum_matrix.h>
 #include <igl/repdiag.h>
+#include <igl/covariance_scatter_matrix.h>
+#include <igl/colon.h>
+#include <igl/is_sparse.h>
 
 #include <algorithm>
 #include <cmath>
@@ -91,7 +94,6 @@ float reduce_support(
     Eigen::MatrixXf& U)
 {
     // Setup
-
     int m = W.cols();
     int d = V.cols();
 
@@ -133,16 +135,91 @@ float reduce_support(
     Eigen::SparseMatrix<float> L, K;
     arap_precompute(V, F, M, L, K);
 
+    Eigen::SparseMatrix<double> CSM;
+    igl::covariance_scatter_matrix(Vd, F, igl::ARAP_ENERGY_TYPE_ELEMENTS, CSM);
+
+
+
+
+
     // // ------------ Dimension: now d------------ //
-    // Eigen::SparseMatrix<double> G_sum_dim;
-    // igl::repdiag(G_sum, d, G_sum_dim);
+    Eigen::SparseMatrix<double> G_sum_dim;
+    igl::repdiag(G_sum, d, G_sum_dim);
+    CSM = (G_sum_dim * CSM).eval();
+
+    // construct CSM_M
+    Eigen::MatrixXd Mcd;
+    igl::lbs_matrix_column(Vd, Wd, Mcd); // notice this is different from lbs_matrix
+
+
+    std::vector<Eigen::MatrixXd> CSM_M;
+    CSM_M.resize(d);
+
+    int n = V.rows(); // number of mesh (domain) vertices
+    Eigen::Matrix<int, Eigen::Dynamic, 1> span_n(n);
+    for (int i = 0; i < n; i++) {
+        span_n(i) = i;
+    }
+
+
+    Eigen::Matrix<int, Eigen::Dynamic, 1> span_mlbs_cols(Mcd.cols());
+    for (int i = 0; i < Mcd.cols(); i++) {
+        span_mlbs_cols(i) = i;
+    }
+
+    int n_groups = CSM.rows() / d;
+    for (int i = 0; i < d; i++) {
+        Eigen::MatrixXd M_i;
+        igl::slice(Mcd, (span_n.array() + i * n).matrix().eval(), span_mlbs_cols, M_i);
+        Eigen::MatrixXd M_i_dim;
+        CSM_M[i].resize(n_groups * d, Mcd.cols());
+        for (int j = 0; j < d; j++) {
+            Eigen::SparseMatrix<double> CSMj;
+            igl::slice(
+                CSM,
+                igl::colon<int>(j * n_groups,(j + 1) * n_groups - 1),
+                igl::colon<int>(j * n,(j + 1) * n - 1),
+                CSMj);
+            assert(CSMj.rows() == n_groups); // remove in the end
+            assert(CSMj.cols() == n); // remove in the end
+            Eigen::MatrixXd CSMjM_i = CSMj * M_i;
+            if (igl::is_sparse(CSMjM_i)) {
+                // Convert to full
+                Eigen::MatrixXd CSMjM_ifull(CSMjM_i);
+                CSM_M[i].block(j * n_groups, 0, CSMjM_i.rows(), CSMjM_i.cols()) = CSMjM_ifull;
+            }
+            else {
+                CSM_M[i].block(j * n_groups, 0, CSMjM_i.rows(), CSMjM_i.cols()) = CSMjM_i;
+            }
+        }
+    }
+
+
+
+
+
+
+
     // Eigen::SparseMatrix<double> Kd;
     // Kd = K.cast<double>().eval();
     // Kd = G_sum_dim * Kd * Md;
-    // K = Kd.cast<float>().eval();
 
-    // std::cout << "Rows: " << K.rows() << std::endl;
-    // std::cout << "Cols: " << K.cols() << std::endl;
+    // Eigen::SparseMatrix<float> Kf;
+    // Kf = Kd.cast<float>().eval();
+
+
+    // std::cout << "G_sum Rows: " << G_sum_dim.rows() << std::endl;
+    // std::cout << "G_sum Cols: " << G_sum_dim.cols() << std::endl;
+
+    // std::cout << "K Rows: " << K.rows() << std::endl;
+    // std::cout << "K Cols: " << K.cols() << std::endl;
+
+    // std::cout << "M Rows: " << M.rows() << std::endl;
+    // std::cout << "M Cols: " << M.cols() << std::endl;
+
+
+    std::cout << "CSM Rows: " << CSM.rows() << std::endl;
+    std::cout << "CSM Cols: " << CSM.cols() << std::endl;
 
 
 
@@ -209,6 +286,7 @@ float reduce_support(
 
         unzip(X, Cd, BE, P, T);
         U = M * T;
+
 
         double E_arap, E_overhang, E_intersect;
 

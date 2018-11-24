@@ -58,7 +58,7 @@ void arap_precompute(
     }
 
     int nv = V.rows();
-    K.resize(nv, 3*nv);
+    K.resize(nv, 3 * nv);
     K.setFromTriplets(triplets.begin(), triplets.end());
     K = K / 6.0;
 }
