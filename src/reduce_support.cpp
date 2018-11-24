@@ -14,6 +14,7 @@
 #include <igl/covariance_scatter_matrix.h>
 #include <igl/colon.h>
 #include <igl/is_sparse.h>
+#include <igl/polar_svd3x3.h>
 
 #include <algorithm>
 #include <cmath>
@@ -94,11 +95,14 @@ float reduce_support(
     Eigen::MatrixXf& U)
 {
     // Setup
-    int m = W.cols();
-    int d = V.cols();
+    int m = W.cols(); // num of bones
+    int d = V.cols(); // dimension --- in 2d it's still 3 tho
+
+
+    std::cout << "m: " << m << std::endl;
 
     U = V;
-    T.resize((d+1)*m, d);
+    T.resize((d + 1) * m, d);
 
     Eigen::MatrixXd Cd;
     Cd = C.cast<double>().eval();
@@ -146,6 +150,7 @@ float reduce_support(
     Eigen::SparseMatrix<double> G_sum_dim;
     igl::repdiag(G_sum, d, G_sum_dim);
     CSM = (G_sum_dim * CSM).eval();
+
 
     // construct CSM_M
     Eigen::MatrixXd Mcd;
@@ -195,31 +200,45 @@ float reduce_support(
     }
 
 
+    typedef Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> MatrixXS;
+    
+    std::vector<MatrixXS> CSM_M_SSCALAR;
+    CSM_M_SSCALAR.resize(d);
+    for (int i = 0; i < d; i++) {
+        CSM_M_SSCALAR[i] = CSM_M[i].cast<float>();
+    }
+
+    // condense CSM
+    MatrixXS nCSM;
+    int numRows = CSM_M_SSCALAR[0].rows();
+    int numCols = (d + 1) * m;
+    nCSM.resize(numRows, numCols);
+
+    for (int r = 0; r < numRows; r++) {
+        for (int coord = 0; coord < d + 1; coord++) {
+            for (int b = 0; b < m; b++) {
+                // this is just a test if we really have a multiple of 3x3 identity
+                Eigen::Matrix3f blok;
+                for (int v = 0; v < 3; v++)
+                {
+                    for (int w = 0; w < 3; w++) {
+                        blok(v, w) = CSM_M_SSCALAR[v](r, coord * (m * d) + b + w * m);
+                    }          
+                }
+
+                nCSM(r, coord * m + b) = blok(0, 0);
+            }
+        }
+    }
 
 
 
+    std::cout << "T Rows: " << T.rows() << std::endl;
+    std::cout << "T Cols: " << T.cols() << std::endl;
 
 
-    // Eigen::SparseMatrix<double> Kd;
-    // Kd = K.cast<double>().eval();
-    // Kd = G_sum_dim * Kd * Md;
-
-    // Eigen::SparseMatrix<float> Kf;
-    // Kf = Kd.cast<float>().eval();
-
-
-    // std::cout << "G_sum Rows: " << G_sum_dim.rows() << std::endl;
-    // std::cout << "G_sum Cols: " << G_sum_dim.cols() << std::endl;
-
-    // std::cout << "K Rows: " << K.rows() << std::endl;
-    // std::cout << "K Cols: " << K.cols() << std::endl;
-
-    // std::cout << "M Rows: " << M.rows() << std::endl;
-    // std::cout << "M Cols: " << M.cols() << std::endl;
-
-
-    std::cout << "CSM Rows: " << CSM.rows() << std::endl;
-    std::cout << "CSM Cols: " << CSM.cols() << std::endl;
+    std::cout << "nCSM Rows: " << nCSM.rows() << std::endl;
+    std::cout << "nCSM Cols: " << nCSM.cols() << std::endl;
 
 
 
@@ -233,7 +252,7 @@ float reduce_support(
     // Initialize initial guess `X` and bounds `LB`, `UB`
 
     bool is3d = !(V.cols() == 3 && V.col(2).sum() == 0.);
-    int dim = d*m;
+    int dim = d * m;
     Eigen::RowVectorXf X(dim), LB(dim), UB(dim);
 
     // find joint locations
@@ -246,29 +265,29 @@ float reduce_support(
 
     for (int j = 0; j < m; ++j) {
 
-        k = d*j;
+        k = d * j;
 
         // rotation 
         X(k)   = 0;
-        X(k+1) = 0;
-        X(k+2) = 0;
+        X(k + 1) = 0;
+        X(k + 2) = 0;
 
         if (is3d) {
-            LB(k)   = -config.rotation_angle;
-            LB(k+1) = -config.rotation_angle;
-            LB(k+2) = -config.rotation_angle;
-            UB(k)   =  config.rotation_angle;
-            UB(k+1) =  config.rotation_angle;
-            UB(k+2) =  config.rotation_angle;
+            LB(k)     = -config.rotation_angle;
+            LB(k + 1) = -config.rotation_angle;
+            LB(k + 2) = -config.rotation_angle;
+            UB(k)     =  config.rotation_angle;
+            UB(k + 1) =  config.rotation_angle;
+            UB(k + 2) =  config.rotation_angle;
         } else {
             // 2D rotation on {x,y}-plane amounts to 
             //      fixing rotation around {x,y}-axis, and allow rotation around z-axis
-            LB(k)   = 0;
-            LB(k+1) = 0;
-            LB(k+2) = -config.rotation_angle;
-            UB(k)   = 0;
-            UB(k+1) = 0;
-            UB(k+2) =  config.rotation_angle;
+            LB(k)     = 0;
+            LB(k + 1) = 0;
+            LB(k + 2) = -config.rotation_angle;
+            UB(k)     = 0;
+            UB(k + 1) = 0;
+            UB(k + 2) =  config.rotation_angle;
         }
     }
 
@@ -277,7 +296,8 @@ float reduce_support(
 
     int iter = 0;
     const std::function<float(Eigen::RowVectorXf&)> f =
-       [&iter, &config, &V,
+       [&n_groups,
+        &iter, &config, &V, &nCSM, &G,
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
@@ -291,10 +311,48 @@ float reduce_support(
         double E_arap, E_overhang, E_intersect;
 
         std::vector<int> unsafe;
+        // E_overhang = 0;
         E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
 
-        E_arap = arap_energy(V, T, M, F, L, K);
 
+        // ARAP_ENERGY
+        E_arap = 0;
+
+        MatrixXS C = nCSM * T;
+
+        MatrixXS R(C.rows(), C.cols());
+        typedef Eigen::Matrix<float, 3, 3> Matrix3T;
+        typedef Eigen::Matrix<float, 3, 1> Vector3T;
+        Matrix3T Ck, Rk;
+        for (int k = 0; k < n_groups; k++) {
+            Ck = C.block(3 * k, 0, 3, 3);
+            igl::polar_svd3x3(Ck, Rk);
+            R.block(3 * k, 0, 3, 3) = Rk;
+        }
+
+
+        int a, b; // two vertices on an edge
+        double coeff;
+        Matrix3T R_a;
+        Vector3T new_vec, old_vec, old_vec_T, trans_old_vec, diff_vec;
+        for (int i = 0; i < F.rows(); i++) {
+            for (int j = 0; j < 3; j++) {
+                a = F(i, j % 3);
+                b = F(i, (j + 1) % 3);
+                R_a = R.block(3 * G(a), 0, 3, 3);
+                new_vec = U.row(a) - U.row(b);
+                old_vec = V.row(a) - V.row(b);
+                old_vec_T = old_vec.transpose();
+                coeff = L.coeff(a, b);
+                trans_old_vec = R_a * old_vec_T;
+                diff_vec = new_vec - trans_old_vec;
+                double diff = coeff * diff_vec.norm() * diff_vec.norm() * 1.0 / 6;
+                E_arap += diff;
+            }
+        }
+
+
+        // Overlapping Energy
         E_intersect = 0;
 
         iter += 1;

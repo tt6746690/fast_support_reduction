@@ -98,7 +98,6 @@ double arap_energy(
     }
 
 
-
     double obj = 0;
     int a, b;
     double coeff;
