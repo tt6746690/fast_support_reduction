@@ -333,6 +333,7 @@ float reduce_support(
             R.block(3 * k, 0, 3, 3) = Rk;
         }
 
+        MTR_BEGIN("reduce_support", "arap_energy");
 
         int a, b; // two vertices on an edge
         double coeff;
@@ -353,6 +354,8 @@ float reduce_support(
                 E_arap += diff;
             }
         }
+
+        MTR_END("reduce_support", "arap_energy");
 
 
         // Overlapping Energy
