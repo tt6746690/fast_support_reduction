@@ -1,4 +1,6 @@
 #include "self_intersection.h"
+#include "minitrace.h"
+
 #include <igl/boundary_loop.h>
 
 struct Point {
@@ -40,6 +42,8 @@ double self_intersection(
     const Eigen::MatrixXi F,
     std::vector<Eigen::Vector3d> & intersection) 
 {
+    MTR_SCOPE_FUNC();
+
     Eigen::VectorXi loop;
     igl::boundary_loop(F, loop);
 

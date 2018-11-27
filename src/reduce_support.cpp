@@ -17,6 +17,7 @@
 #include "overhang_energy.h"
 #include "arap_energy.h"
 #include "self_intersection.h"
+#include "minitrace.h"
 
 #include <iostream>
 
@@ -178,6 +179,8 @@ float reduce_support(
         &M, &L, &K,                                 // arap
         &tau, &is3d                                 // overhang
     ](Eigen::RowVectorXf & X) -> float {
+
+        MTR_SCOPE_FUNC();
 
         unzip(X, Cd, BE, P, T);
         U = M * T;
