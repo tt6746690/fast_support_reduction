@@ -14,6 +14,14 @@ option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
 find_package(LIBIGL REQUIRED QUIET)
 
+# gperftools
+
+find_package(Gperftools REQUIRED)
+
+# minitrace
+
+add_definitions(-DMTR_ENABLED)
+
 # source files
 
 file(GLOB SRCFILES 
@@ -27,6 +35,7 @@ target_link_libraries(bbw igl::core igl::opengl_glfw)
 
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 target_link_libraries(support_reduction igl::core igl::opengl_glfw)
+# target_link_libraries(support_reduction igl::core igl::opengl_glfw ${GPERFTOOLS_PROFILER})
 
 add_executable(visualize visualize.cpp ${SRCFILES})
 target_link_libraries(visualize igl::core igl::opengl_glfw)

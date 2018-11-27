@@ -1,4 +1,5 @@
 #include "arap_energy.h"
+#include "minitrace.h"
 
 #include <igl/cotmatrix.h>
 #include <igl/min_quad_with_fixed.h>
@@ -78,6 +79,7 @@ double arap_energy(
     const Eigen::SparseMatrix<ScalarL>& L,
     const Eigen::SparseMatrix<ScalarK>& K)
 {
+    MTR_SCOPE_FUNC();
     typedef typename DerivedT::Scalar ScalarT;
     typedef Eigen::Matrix<ScalarT, Eigen::Dynamic, Eigen::Dynamic> MatrixXT;
     typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
