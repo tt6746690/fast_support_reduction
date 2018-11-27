@@ -9,7 +9,7 @@
 #endif
 
 #ifndef DATA_PATH
-    #define DATA_PATH "../data/"
+    #define DATA_PATH "data/"
 #endif
 
 #endif

@@ -10,6 +10,7 @@
 #include <igl/snap_points.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/unproject_onto_mesh.h>
+#include <igl/boundary_loop.h>
 
 #include "src/defs.h"
 #include "src/compute_bbw.h"
@@ -74,11 +75,14 @@ int main(int argc, char*argv[]) {
     igl::min_quad_with_fixed_data<double> arap_data;
     Eigen::SparseMatrix<double> arap_K, L;
 
+    // overhang
     Eigen::RowVector3f dp(0., 1., 0.);
     double alpha_max = 0.25 * M_PI;
     double tau = std::sin(alpha_max);
-    const Eigen::RowVector3d red(255. / 255., 0., 0.);
+    Eigen::VectorXi bnd;
+    igl::boundary_loop(F, bnd);
 
+    const Eigen::RowVector3d red(255. / 255., 0., 0.);
     igl::opengl::glfw::Viewer viewer;
     const auto & update = [&]()
     {
@@ -97,7 +101,7 @@ int main(int argc, char*argv[]) {
         {
             arap_single_iteration(arap_data, arap_K, s.CU, U);
             std::vector<int> unsafe;
-            auto e = overhang_energy(U, F, dp, tau, 2, unsafe);
+            auto e = overhang_energy(U, F, bnd, dp, tau, 2, unsafe);
             
             viewer.data().clear();
             viewer.data().set_mesh(U, F);
@@ -261,7 +265,7 @@ int main(int argc, char*argv[]) {
         {
             arap_single_iteration(arap_data, arap_K, s.CU, U);
             std::vector<int> unsafe;
-            auto e = overhang_energy(U, F, dp, tau, 2, unsafe);
+            auto e = overhang_energy(U, F, bnd, dp, tau, 2, unsafe);
             // draw unsafe edges
             for (int i = 0; i < unsafe.size() / 2; ++i) {
                 viewer.data().add_edges(
