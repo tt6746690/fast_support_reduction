@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <gperftools/profiler.h>
 
 using namespace std;
 using namespace Eigen;
@@ -25,6 +26,7 @@ int main(int argc, char*argv[]) {
 
     using namespace Eigen;
     using namespace std;
+    ProfilerStart("build/out.prof");
 
     std::string filename = "woody";
     int pso_iters = 1;
@@ -59,7 +61,6 @@ int main(int argc, char*argv[]) {
     Eigen::MatrixXf V, U;
     Eigen::MatrixXi F;
     Eigen::RowVector3f last_mouse;
-    long sel = -1;
     igl::readOBJ(DATA_PATH+filename+".obj", V, F);
     U = V;
 
@@ -89,4 +90,6 @@ int main(int argc, char*argv[]) {
 
     Eigen::MatrixXf T;
     reduce_support(V, F, C, BE, W, config, T, U);
+
+    ProfilerStop();
 }
