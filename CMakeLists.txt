@@ -3,6 +3,23 @@ project(fast_support_reduction)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+# debugging
+
+option(WITH_DEBUG "Enable debugging" ON)
+if(WITH_DEBUG)
+    add_compile_options(-O0)
+    add_definitions(-DDEBUG)
+else()
+    add_compile_options(-O3)
+    add_definitions(-DNDEBUG)
+endif()
+
+option(WITH_VISUALIZE "Enable visualization" OFF)
+if(WITH_VISUALIZE)
+    add_definitions(-DVISUALIZE)
+endif()
+
+
 # compiler 
 add_definitions(${CMAKE_CXX_FLAGS} "-g")
 add_definitions(${CMAKE_CXX_FLAGS} "-Wall")
@@ -35,7 +52,6 @@ target_link_libraries(bbw igl::core igl::opengl_glfw)
 
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 target_link_libraries(support_reduction igl::core igl::opengl_glfw)
-# target_link_libraries(support_reduction igl::core igl::opengl_glfw ${GPERFTOOLS_PROFILER})
 
 add_executable(visualize visualize.cpp ${SRCFILES})
 target_link_libraries(visualize igl::core igl::opengl_glfw)
