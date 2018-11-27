@@ -18,6 +18,10 @@ find_package(LIBIGL REQUIRED QUIET)
 
 find_package(Gperftools REQUIRED)
 
+# minitrace
+
+add_definitions(-DMTR_ENABLED)
+
 # source files
 
 file(GLOB SRCFILES 
@@ -30,7 +34,8 @@ add_executable(bbw bbw.cpp ${SRCFILES})
 target_link_libraries(bbw igl::core igl::opengl_glfw)
 
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
-target_link_libraries(support_reduction igl::core igl::opengl_glfw ${GPERFTOOLS_PROFILER})
+target_link_libraries(support_reduction igl::core igl::opengl_glfw)
+# target_link_libraries(support_reduction igl::core igl::opengl_glfw ${GPERFTOOLS_PROFILER})
 
 add_executable(visualize visualize.cpp ${SRCFILES})
 target_link_libraries(visualize igl::core igl::opengl_glfw)

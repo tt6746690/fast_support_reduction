@@ -3,6 +3,7 @@
 ```
 git clone --recursive git@github.com:tt6746690/fast_support_reduction.git
 
-# profiling: https://gperftools.github.io/gperftools/cpuprofile.html
-brew install gperftools
+# profiling: minitrace + chrome tracing 
+#       https://github.com/hrydgard/minitrace
+#       https://www.chromium.org/developers/how-tos/trace-event-profiling-tool
 ```

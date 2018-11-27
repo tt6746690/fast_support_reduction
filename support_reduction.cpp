@@ -13,11 +13,11 @@
 
 #include "src/defs.h"
 #include "src/reduce_support.h"
+#include "src/minitrace.h"
 
 #include <cstdio>
 #include <iostream>
 #include <string>
-#include <gperftools/profiler.h>
 
 using namespace std;
 using namespace Eigen;
@@ -26,7 +26,7 @@ int main(int argc, char*argv[]) {
 
     using namespace Eigen;
     using namespace std;
-    ProfilerStart("build/out.prof");
+    mtr_init("build/trace.json");
 
     std::string filename = "woody";
     int pso_iters = 1;
@@ -91,5 +91,6 @@ int main(int argc, char*argv[]) {
     Eigen::MatrixXf T;
     reduce_support(V, F, C, BE, W, config, T, U);
 
-    ProfilerStop();
+    mtr_flush();
+    mtr_shutdown();
 }

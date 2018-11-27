@@ -1,4 +1,5 @@
 #include "overhang_energy.h"
+#include "minitrace.h"
 
 #include <igl/slice.h>
 #include <igl/opengl/glfw/Viewer.h>
@@ -9,7 +10,6 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
-
 
 template <
     typename DerivedV,
@@ -22,11 +22,10 @@ double overhang_energy(
     int dim,
     std::vector<int>& unsafe)
 {
-
+    MTR_SCOPE_FUNC();
     typedef typename DerivedV::Scalar ScalarV;
     typedef Eigen::Matrix<ScalarV, 3, 1> RowVector3VT;
     typedef typename DerivedF::PlainObject PlainObjectF;
-
 
     RowVector3VT dpn;
     dpn = dp.cast<ScalarV>().normalized();
