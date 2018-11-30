@@ -23,6 +23,7 @@
 //      tau,            self-supporting coefficient, τ = sin(α_max)
 //      dim,            dimension {2, 3}
 // Outputs:
+//      U,              unsafe triangle for both {2, 3} dimension, i.e. indices into F
 //      overhang energy E(V)
 
 template <
@@ -36,7 +37,7 @@ double overhang_energy(
     const Eigen::RowVector3f& dp,
     double tau,
     int dim,
-    std::vector<int>& unsafe)
+    std::vector<int>& U)
 {
     MTR_SCOPE_FUNC();
     typedef typename DerivedV::Scalar ScalarV;
@@ -65,7 +66,6 @@ double overhang_energy(
             n(2) =  ele(2);
             e = n.dot(dpn) + tau;
 #ifdef VISUALIZE
-            std::cout << "here\n";
             if (e < 0) {
                 unsafe.push_back(bnd(b));
                 unsafe.push_back(bnd((b+1)%bnd_size));

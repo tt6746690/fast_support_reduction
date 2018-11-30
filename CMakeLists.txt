@@ -31,10 +31,6 @@ option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
 find_package(LIBIGL REQUIRED QUIET)
 
-# gperftools
-
-find_package(Gperftools REQUIRED)
-
 # minitrace
 
 add_definitions(-DMTR_ENABLED)
