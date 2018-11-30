@@ -132,8 +132,6 @@ float reduce_support(
     igl::directed_edge_parents(BE, P);
 
     // Initialize initial guess `X` and bounds `LB`, `UB`
-
-    bool is3d = !(V.cols() == 3 && V.col(2).sum() == 0.);
     int dim = d*m;
     Eigen::RowVectorXf X(dim), LB(dim), UB(dim);
 
@@ -154,7 +152,7 @@ float reduce_support(
         X(k+1) = 0;
         X(k+2) = 0;
 
-        if (is3d) {
+        if (config.is3d) {
             LB(k)   = -config.rotation_angle;
             LB(k+1) = -config.rotation_angle;
             LB(k+2) = -config.rotation_angle;
@@ -182,7 +180,7 @@ float reduce_support(
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
-        &tau, &bnd, &is3d                           // overhang
+        &tau, &bnd                                  // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
         MTR_SCOPE_FUNC();
@@ -193,7 +191,7 @@ float reduce_support(
         double E_arap, E_overhang, E_intersect;
 
         std::vector<int> unsafe;
-        E_overhang = overhang_energy(U, F, bnd, config.dp, tau, is3d?3:2, unsafe);
+        E_overhang = overhang_energy(U, F, bnd, config.dp, tau, config.is3d?3:2, unsafe);
 
         E_arap = arap_energy(V, T, M, F, L, K);
 
@@ -224,13 +222,16 @@ float reduce_support(
         return fX;
     }
 
-    // Plotting
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
     int selected = 0;
     Eigen::MatrixXd Ud;
     Ud = U.cast<double>().eval();
     const Eigen::RowVector3d red(1., 0., 0.);
     const Eigen::RowVector3d green(0., 1., 0.);
     const Eigen::RowVector3d blue(0., 1., 0.);
+    const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
     igl::opengl::glfw::Viewer viewer;
     const auto set_color = [&](igl::opengl::glfw::Viewer &viewer) {
             Eigen::MatrixXd CC;
@@ -238,18 +239,17 @@ float reduce_support(
             viewer.data().set_colors(CC);
         };
     set_color(viewer);
-    viewer.data().set_mesh(Ud, F);
+    viewer.data().set_mesh(Ud, F);      // deformed mesh
     Eigen::MatrixXd CT;
     Eigen::MatrixXi BET;
     igl::deform_skeleton(Cd, BE, T.cast<double>().eval(), CT, BET);
-    viewer.data().add_points(CT, red);        // joint
-    viewer.data().set_edges(CT, BET, red);    // bone
-    for (int i = 0; i < dT.size(); ++i) {
-        viewer.data().add_edges(Eigen::RowVector3d(0,0,0), (Eigen::RowVector3d)dT[i], blue);
-    }
+    viewer.data().add_points(CT, sea_green);        // deformed joint
+    viewer.data().set_edges(CT, BET, sea_green);    // deformed bone
     viewer.data().compute_normals();
     viewer.data().set_normals(viewer.data().F_normals);
     viewer.data().show_lines = false;
+    viewer.data().show_overlay_depth = false;
+    viewer.data().line_width = 1;
     viewer.callback_key_down = 
         [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
             switch(key) {
@@ -270,6 +270,12 @@ float reduce_support(
         "Press '.' to show next weight function.\n"<<
         "Press ',' to show previous weight function.\n";
     viewer.launch();
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
     return fX;
 }
