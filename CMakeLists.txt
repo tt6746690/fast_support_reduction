@@ -3,6 +3,23 @@ project(fast_support_reduction)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
+# debugging
+
+option(WITH_DEBUG "Enable debugging" ON)
+if(WITH_DEBUG)
+    add_compile_options(-O0)
+    add_definitions(-DDEBUG)
+else()
+    add_compile_options(-O3)
+    add_definitions(-DNDEBUG)
+endif()
+
+option(WITH_VISUALIZE "Enable visualization" OFF)
+if(WITH_VISUALIZE)
+    add_definitions(-DVISUALIZE)
+endif()
+
+
 # compiler 
 add_definitions(${CMAKE_CXX_FLAGS} "-g")
 add_definitions(${CMAKE_CXX_FLAGS} "-Wall")
@@ -13,6 +30,14 @@ option(LIBIGL_WITH_OPENGL            "Use OpenGL"         ON)
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
 find_package(LIBIGL REQUIRED QUIET)
+
+# gperftools
+
+find_package(Gperftools REQUIRED)
+
+# minitrace
+
+add_definitions(-DMTR_ENABLED)
 
 # source files
 

@@ -7,6 +7,8 @@
 #include <igl/directed_edge_parents.h>
 #include <igl/deform_skeleton.h>
 #include <igl/opengl/glfw/Viewer.h>
+#include <igl/boundary_loop.h>
+
 
 #include <algorithm>
 #include <cmath>
@@ -17,6 +19,7 @@
 #include "overhang_energy.h"
 #include "arap_energy.h"
 #include "self_intersection.h"
+#include "minitrace.h"
 
 #include <iostream>
 
@@ -118,8 +121,10 @@ float reduce_support(
     Eigen::SparseMatrix<float> L, K;
     arap_precompute(V, F, M, L, K);
 
-    // Overlap
+    // Overhang
     double tau = std::sin(config.alpha_max);
+    Eigen::VectorXi bnd;
+    igl::boundary_loop(F, bnd);
 
     // Retrieve parents for forward kinematics
     Eigen::MatrixXi P;
@@ -176,8 +181,10 @@ float reduce_support(
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
-        &tau, &is3d                                 // overhang
+        &tau, &bnd, &is3d                           // overhang
     ](Eigen::RowVectorXf & X) -> float {
+
+        MTR_SCOPE_FUNC();
 
         unzip(X, Cd, BE, P, T);
         U = M * T;
@@ -185,7 +192,7 @@ float reduce_support(
         double E_arap, E_overhang, E_intersect;
 
         std::vector<int> unsafe;
-        E_overhang = overhang_energy(U, F, config.dp, tau, is3d?3:2, unsafe);
+        E_overhang = overhang_energy(U, F, bnd, config.dp, tau, is3d?3:2, unsafe);
 
         E_arap = arap_energy(V, T, M, F, L, K);
 

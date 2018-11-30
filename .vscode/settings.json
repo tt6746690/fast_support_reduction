@@ -28,7 +28,8 @@
         "cstdlib": "cpp",
         "cwchar": "cpp",
         "cwctype": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "iosfwd": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }
