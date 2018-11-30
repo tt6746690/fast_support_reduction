@@ -28,7 +28,8 @@ typedef
   RotationList;
 
 ReduceSupportConfig::ReduceSupportConfig()
-:   alpha_max(0.25*M_PI), 
+:   is3d(true),
+    alpha_max(0.25*M_PI), 
     dp(0.,1.,0.),
     rotation_angle(0.25*M_PI),
     pso_iters(1),
