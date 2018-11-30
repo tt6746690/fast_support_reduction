@@ -125,6 +125,7 @@ float reduce_support(
     // Overhang
     double tau = std::sin(config.alpha_max);
     Eigen::VectorXi bnd;
+    Eigen::MatrixXi unsafe;     // risky faces for visualization
     igl::boundary_loop(F, bnd);
 
     // Retrieve parents for forward kinematics
@@ -180,7 +181,7 @@ float reduce_support(
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U,                                 // mesh
         &M, &L, &K,                                 // arap
-        &tau, &bnd                                  // overhang
+        &tau, &bnd, &unsafe                         // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
         MTR_SCOPE_FUNC();
@@ -190,11 +191,8 @@ float reduce_support(
 
         double E_arap, E_overhang, E_intersect;
 
-        std::vector<int> unsafe;
-        E_overhang = overhang_energy(U, F, bnd, config.dp, tau, config.is3d?3:2, unsafe);
-
+        E_overhang = overhang_energy(U, F, bnd, config.dp, tau, config.is3d, unsafe);
         E_arap = arap_energy(V, T, M, F, L, K);
-
         E_intersect = 0;
 
         iter += 1;
@@ -239,14 +237,20 @@ float reduce_support(
             viewer.data().set_colors(CC);
         };
     set_color(viewer);
-    viewer.data().set_mesh(Ud, F);      // deformed mesh
+    // deformed mesh
+    viewer.data().set_mesh(Ud, F);
     Eigen::MatrixXd CT;
     Eigen::MatrixXi BET;
     igl::deform_skeleton(Cd, BE, T.cast<double>().eval(), CT, BET);
-    viewer.data().add_points(CT, sea_green);        // deformed joint
-    viewer.data().set_edges(CT, BET, sea_green);    // deformed bone
+    // deformed joints / bones 
+    viewer.data().add_points(CT, sea_green);
+    viewer.data().set_edges(CT, BET, sea_green);
     viewer.data().compute_normals();
     viewer.data().set_normals(viewer.data().F_normals);
+    // risky faces (overhang)
+    Eigen::MatrixXd RiskyColors(unsafe.rows(), 3);
+    RiskyColors.rowwise() = red;
+    viewer.data().set_edges(Ud, unsafe, RiskyColors);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1;

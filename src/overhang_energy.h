@@ -23,7 +23,7 @@
 //      tau,            self-supporting coefficient, τ = sin(α_max)
 //      dim,            dimension {2, 3}
 // Outputs:
-//      U,              unsafe triangle for both {2, 3} dimension, i.e. indices into F
+//      unsafe, _ by 2  unsafe edges for both {2, 3} dimension, i.e. indices into F
 //      overhang energy E(V)
 
 template <
@@ -36,8 +36,8 @@ double overhang_energy(
     const Eigen::PlainObjectBase<DerivedL>& bnd,
     const Eigen::RowVector3f& dp,
     double tau,
-    int dim,
-    std::vector<int>& U)
+    bool is3d,
+    Eigen::MatrixXi& unsafe)
 {
     MTR_SCOPE_FUNC();
     typedef typename DerivedV::Scalar ScalarV;
@@ -49,13 +49,16 @@ double overhang_energy(
     double e;
     double energy = 0;
 
-    // 2D case
 
-    if (dim == 2) {
+#ifdef VISUALIZE
+    int k = 0;  // number of unsafe edges
+    unsafe = Eigen::MatrixXi::Zero(bnd.rows()+1, 2);
+#endif
+
+    if (!is3d) {
 
         int bnd_size = bnd.size();
         RowVector3VT i, j, ele, n;
-        std::vector<int> unsafe;
 
         for (int b = 0; b < bnd_size; ++b) {
             i = V.row(bnd(b));
@@ -67,8 +70,8 @@ double overhang_energy(
             e = n.dot(dpn) + tau;
 #ifdef VISUALIZE
             if (e < 0) {
-                unsafe.push_back(bnd(b));
-                unsafe.push_back(bnd((b+1)%bnd_size));
+                unsafe.row(k) << bnd(b), bnd((b+1)%bnd_size);
+                k += 1;
             }
 #endif
             e = std::pow(std::min(e, 0.), 2.0);
@@ -78,6 +81,10 @@ double overhang_energy(
     } else {
         printf("overhang energy for 3D not supported!\n");
     }
+
+#ifdef VISUALIZE
+    unsafe.conservativeResize(k, unsafe.cols());
+#endif
 
     return energy;
 }

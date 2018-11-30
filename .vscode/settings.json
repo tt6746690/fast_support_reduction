@@ -29,7 +29,10 @@
         "cwchar": "cpp",
         "cwctype": "cpp",
         "variant": "cpp",
-        "iosfwd": "cpp"
+        "iosfwd": "cpp",
+        "__locale": "cpp",
+        "__string": "cpp",
+        "string_view": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }
