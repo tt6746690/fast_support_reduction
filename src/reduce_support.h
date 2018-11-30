@@ -9,6 +9,9 @@ public:
     ReduceSupportConfig();
 public:
 
+    // input mesh is 3D or 2D
+    bool is3d;
+
     // overhang
     double alpha_max;
     Eigen::RowVector3f dp;
