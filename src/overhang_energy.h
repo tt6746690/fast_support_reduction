@@ -112,7 +112,7 @@ double overhang_energy_3d(
 #endif
 
     for (int i = 0; i < N.rows(); ++i) {
-        e = N.row(i).dot(dp) + tau;
+        e = N.row(i).normalized().dot(dp) + tau;
 
 #ifdef VISUALIZE
         if (e < 0) {

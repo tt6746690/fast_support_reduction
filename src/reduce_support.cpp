@@ -219,6 +219,7 @@ float reduce_support(
     // Optimization
 
     auto fX = igl::pso(f, LB, UB, config.pso_iters, config.pso_population, X);
+    std::cout << "final fX: " << fX << '\n';
     unzip(X, Cd, BE, P, T);
     U = M * T;
 
@@ -228,6 +229,7 @@ float reduce_support(
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////////////
+
 
     int selected = 0;
     Eigen::MatrixXd Ud;
@@ -251,12 +253,26 @@ float reduce_support(
     // deformed joints / bones 
     viewer.data().add_points(CT, sea_green);
     viewer.data().set_edges(CT, BET, sea_green);
-    viewer.data().compute_normals();
-    viewer.data().set_normals(viewer.data().F_normals);
     // risky faces (overhang)
     Eigen::MatrixXd RiskyColors(unsafe.rows(), 3);
     RiskyColors.rowwise() = red;
     viewer.data().set_edges(Ud, unsafe, RiskyColors);
+    // coordinates 
+    Eigen::Vector3d min = U.colwise().minCoeff().cast<double>();
+    Eigen::Vector3d max = U.colwise().maxCoeff().cast<double>();
+    Eigen::MatrixXd VCoord(7, 3);
+    VCoord << 0, 0, 0,
+            min(0), 0, 0,
+            max(0), 0, 0,
+            0, min(1), 0,
+            0, max(1), 0,
+            0, 0, min(2),
+            0, 0, max(2);
+    viewer.data().add_points(VCoord, green);
+    for (int i = 1; i < VCoord.rows(); ++i) {
+        viewer.data().add_edges(VCoord.row(0), VCoord.row(i), green);
+    }
+
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1;
