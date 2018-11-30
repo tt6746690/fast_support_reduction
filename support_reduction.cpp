@@ -60,10 +60,10 @@ int main(int argc, char*argv[]) {
         false : true;
 
     Eigen::MatrixXf V, U;
-    Eigen::MatrixXi E, F;   // E=element
+    Eigen::MatrixXi Tet, F;   // Tet=tetrahedron mesh
 
     if (is3d) {
-        igl::readMESH(DATA_PATH+filename+".mesh", V, E, F);
+        igl::readMESH(DATA_PATH+filename+".mesh", V, Tet, F);
     } else {
         igl::readOBJ(DATA_PATH+filename+".obj", V, F);
     }
@@ -93,7 +93,7 @@ int main(int argc, char*argv[]) {
     config.display = true;
 
     Eigen::MatrixXf T;
-    reduce_support(V, F, C, BE, W, config, T, U);
+    reduce_support(V, Tet, F, C, BE, W, config, T, U);
 
     mtr_flush();
     mtr_shutdown();

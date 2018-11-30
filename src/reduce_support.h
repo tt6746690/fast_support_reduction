@@ -36,6 +36,7 @@ public:
 // 
 // Inputs:
 //      V   #V x 3,
+//      Tet #Tet x 4
 //      F   #F x 3,
 //      C   (m+1) x 3          vertex position for joint (assume 1 tree)
 //      BE  m x 2              hande edge indexed into C
@@ -60,6 +61,7 @@ public:
 
 float reduce_support(
     const Eigen::MatrixXf& V,
+    const Eigen::MatrixXi& Tet,
     const Eigen::MatrixXi& F,
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,

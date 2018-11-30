@@ -82,6 +82,7 @@ void unzip(
 
 float reduce_support(
     const Eigen::MatrixXf& V,
+    const Eigen::MatrixXi& Tet,
     const Eigen::MatrixXi& F,
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
@@ -179,7 +180,7 @@ float reduce_support(
     const std::function<float(Eigen::RowVectorXf&)> f =
        [&iter, &config, &V,
         &Cd, &BE, &P,                               // forward kinematics
-        &T, &F, &U,                                 // mesh
+        &T, &F, &U, &Tet,                           // mesh
         &M, &L, &K,                                 // arap
         &tau, &bnd, &unsafe                         // overhang
     ](Eigen::RowVectorXf & X) -> float {
