@@ -82,6 +82,7 @@ void unzip(
 
 float reduce_support(
     const Eigen::MatrixXf& V,
+    const Eigen::MatrixXi& Tet,
     const Eigen::MatrixXi& F,
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
@@ -125,6 +126,7 @@ float reduce_support(
     // Overhang
     double tau = std::sin(config.alpha_max);
     Eigen::VectorXi bnd;
+    Eigen::MatrixXi unsafe;     // risky faces for visualization
     igl::boundary_loop(F, bnd);
 
     // Retrieve parents for forward kinematics
@@ -132,8 +134,6 @@ float reduce_support(
     igl::directed_edge_parents(BE, P);
 
     // Initialize initial guess `X` and bounds `LB`, `UB`
-
-    bool is3d = !(V.cols() == 3 && V.col(2).sum() == 0.);
     int dim = d*m;
     Eigen::RowVectorXf X(dim), LB(dim), UB(dim);
 
@@ -154,7 +154,7 @@ float reduce_support(
         X(k+1) = 0;
         X(k+2) = 0;
 
-        if (is3d) {
+        if (config.is3d) {
             LB(k)   = -config.rotation_angle;
             LB(k+1) = -config.rotation_angle;
             LB(k+2) = -config.rotation_angle;
@@ -180,9 +180,9 @@ float reduce_support(
     const std::function<float(Eigen::RowVectorXf&)> f =
        [&iter, &config, &V,
         &Cd, &BE, &P,                               // forward kinematics
-        &T, &F, &U,                                 // mesh
+        &T, &F, &U, &Tet,                           // mesh
         &M, &L, &K,                                 // arap
-        &tau, &bnd, &is3d                           // overhang
+        &tau, &bnd, &unsafe                         // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
         MTR_SCOPE_FUNC();
@@ -192,11 +192,13 @@ float reduce_support(
 
         double E_arap, E_overhang, E_intersect;
 
-        std::vector<int> unsafe;
-        E_overhang = overhang_energy(U, F, bnd, config.dp, tau, is3d?3:2, unsafe);
-
+        if (config.is3d) {
+            E_overhang = overhang_energy_3d(U, F,   config.dp, tau, unsafe);
+        } else {
+            E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, unsafe);
+        }
+        
         E_arap = arap_energy(V, T, M, F, L, K);
-
         E_intersect = 0;
 
         iter += 1;
@@ -217,6 +219,7 @@ float reduce_support(
     // Optimization
 
     auto fX = igl::pso(f, LB, UB, config.pso_iters, config.pso_population, X);
+    std::cout << "final fX: " << fX << '\n';
     unzip(X, Cd, BE, P, T);
     U = M * T;
 
@@ -224,13 +227,17 @@ float reduce_support(
         return fX;
     }
 
-    // Plotting
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     int selected = 0;
     Eigen::MatrixXd Ud;
     Ud = U.cast<double>().eval();
     const Eigen::RowVector3d red(1., 0., 0.);
     const Eigen::RowVector3d green(0., 1., 0.);
     const Eigen::RowVector3d blue(0., 1., 0.);
+    const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
     igl::opengl::glfw::Viewer viewer;
     const auto set_color = [&](igl::opengl::glfw::Viewer &viewer) {
             Eigen::MatrixXd CC;
@@ -238,18 +245,37 @@ float reduce_support(
             viewer.data().set_colors(CC);
         };
     set_color(viewer);
+    // deformed mesh
     viewer.data().set_mesh(Ud, F);
     Eigen::MatrixXd CT;
     Eigen::MatrixXi BET;
     igl::deform_skeleton(Cd, BE, T.cast<double>().eval(), CT, BET);
-    viewer.data().add_points(CT, red);        // joint
-    viewer.data().set_edges(CT, BET, red);    // bone
-    for (int i = 0; i < dT.size(); ++i) {
-        viewer.data().add_edges(Eigen::RowVector3d(0,0,0), (Eigen::RowVector3d)dT[i], blue);
+    // deformed joints / bones 
+    viewer.data().add_points(CT, sea_green);
+    viewer.data().set_edges(CT, BET, sea_green);
+    // risky faces (overhang)
+    Eigen::MatrixXd RiskyColors(unsafe.rows(), 3);
+    RiskyColors.rowwise() = red;
+    viewer.data().set_edges(Ud, unsafe, RiskyColors);
+    // coordinates 
+    Eigen::Vector3d min = U.colwise().minCoeff().cast<double>();
+    Eigen::Vector3d max = U.colwise().maxCoeff().cast<double>();
+    Eigen::MatrixXd VCoord(7, 3);
+    VCoord << 0, 0, 0,
+            min(0), 0, 0,
+            max(0), 0, 0,
+            0, min(1), 0,
+            0, max(1), 0,
+            0, 0, min(2),
+            0, 0, max(2);
+    viewer.data().add_points(VCoord, green);
+    for (int i = 1; i < VCoord.rows(); ++i) {
+        viewer.data().add_edges(VCoord.row(0), VCoord.row(i), green);
     }
-    viewer.data().compute_normals();
-    viewer.data().set_normals(viewer.data().F_normals);
+
     viewer.data().show_lines = false;
+    viewer.data().show_overlay_depth = false;
+    viewer.data().line_width = 1;
     viewer.callback_key_down = 
         [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
             switch(key) {
@@ -270,6 +296,12 @@ float reduce_support(
         "Press '.' to show next weight function.\n"<<
         "Press ',' to show previous weight function.\n";
     viewer.launch();
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
     return fX;
 }

@@ -8,7 +8,13 @@ git clone --recursive git@github.com:tt6746690/fast_support_reduction.git
 #       https://www.chromium.org/developers/how-tos/trace-event-profiling-tool
 
 mkdir build && cd build
-cmake ..                        # debugging
-cmake .. -DWITH_DEBUG=OFF       # 03!
-cmake .. -DWITH_VISUALIZE=ON    # visualize correctness of energy computation
+
+# debugging, or
+cmake ..
+# 03! or
+cmake .. -DWITH_DEBUG=OFF
+# visualize correctness of energy computation
+cmake .. -DWITH_VISUALIZE=ON
+
+make
 ```
