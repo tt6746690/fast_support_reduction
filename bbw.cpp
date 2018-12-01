@@ -9,6 +9,8 @@
 #include <igl/readTGF.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/bbw.h>
+#include <igl/copyleft/tetgen/tetrahedralize.h>
+
 
 #include "src/defs.h"
 #include <string>
@@ -28,18 +30,18 @@ int main(int argc, char*argv[]) {
     Eigen::MatrixXd V, C;
     Eigen::MatrixXi F, T, BE;
 
-    // igl::readOBJ(DATA_PATH+filename+".obj", V, F);
-    igl::readMESH(DATA_PATH+filename+".mesh",V,T,F);
+
+    // igl::readMESH(DATA_PATH+filename+".mesh",V,T,F);
+    igl::readOBJ(DATA_PATH+filename+".obj", V, F);
 
     igl::readTGF(DATA_PATH+filename+".tgf", C, BE);
 
-    // Instead of remeshing with additional handle positions C
-    // Map handle each handle position to closest vertex in V
-    // for (int i = 0; i < C.rows(); ++i) {
-    //     MatrixXd::Index closest;
-    //     (V.rowwise() - C.row(i)).rowwise().squaredNorm().minCoeff(&closest);
-    //     C.row(i) = V.row(closest);
-    // }
+    Eigen::MatrixXd TV;
+    Eigen::MatrixXi TF, TT;
+    igl::copyleft::tetgen::tetrahedralize(V, F, "pq1.414a0.01", TV, TT, TF);
+
+
+
 
     // Compute bbw
 
