@@ -75,7 +75,7 @@ where $\tilde{\bL} = \bM^T \bL \bM \in \R^{(d+1)m \times (d+1)m}$, $\tilde{\bK} 
 
 \subsection*{overhang energy}
 
-An overhanging region that can be 3D printed without support is called \textit{self-supported}. We call the angle between region's tangent plane and printing direction be \textit{self-supported angle} $\alpha$. Let $\alpha_{max}$ be maximum supporting angle. Let $\tau = sin(\alpha_{max})$ be \textit{maximal supporting coefficient}. Let $\partial \calM \subset \bF$ be boundary of mesh $\calM$, i.e. surface faces. A surface face $f$ is \textit{risky} and thus requires support if $\bn(f) \cdot \bd_{p} < -\tau$, where $\bn(f)$ is unit normal of $f$ and $\bd_{p}$ is the printing direction. We can define an overhang energy that measures support required for 3D printing,
+An overhanging region that can be 3D printed without support is called \textit{self-supported}. We call the angle between region's tangent plane and printing direction be \textit{self-supported angle} $\alpha$. Let $\alpha_{max}$ be maximum supporting angle. Let $\tau = cos(\alpha_{max})$ be \textit{maximal supporting coefficient}. Let $\partial \calM \subset \bF$ be boundary of mesh $\calM$, i.e. surface faces. A surface face $f$ is \textit{risky} and thus requires support if $\bn(f) \cdot \bd_{p} < -\tau$, where $\bn(f)$ is unit normal of $f$ and $\bd_{p}$ is the printing direction. We can define an overhang energy that measures support required for 3D printing,
 \[
     E_{overhang}(\bV') = \sum_{f\in \partial \calM} min(\bn(f) \cdot \bd_{p} + \tau, 0)
 \]

@@ -1,4 +1,5 @@
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 
 #include <igl/readMESH.h>
 #include <igl/readOBJ.h>
@@ -32,7 +33,13 @@ int main(int argc, char*argv[]) {
     double c_arap = 1;
     double c_overhang = 1;
     double c_intersect = 1;
+    double alpha_max = 0.25 * M_PI;     // 45
     double rotation_angle = M_PI / 10;
+    int rotate_model = 0; 
+    //  0 - dont rotate 
+    //  1 - x 
+    //  2 - y
+    //  3 - z
 
     if (argc == 2) {
         filename = argv[1];
@@ -46,15 +53,33 @@ int main(int argc, char*argv[]) {
         pso_iters = std::stoi(argv[2]);
         pso_population = std::stoi(argv[3]);
     }
-    if (argc == 8) {
+    if (argc == 10) {
         filename = argv[1];
         pso_iters = std::stoi(argv[2]);
         pso_population = std::stoi(argv[3]);
-        rotation_angle = (std::stod(argv[4]) / 180.) * M_PI / 2;
-        c_arap = std::stod(argv[5]);
-        c_overhang = std::stod(argv[6]);
-        c_intersect = std::stod(argv[7]);
+        alpha_max = (std::stod(argv[4]) / 180.) * M_PI;
+        rotation_angle = (std::stod(argv[5]) / 180.) * M_PI / 2;
+        c_arap = std::stod(argv[6]);
+        c_overhang = std::stod(argv[7]);
+        c_intersect = std::stod(argv[8]);
+        rotate_model = std::stoi(argv[9]);
     }
+
+    auto apply_rotation = [rotate_model](Eigen::MatrixXf& V) {
+        Eigen::Transform<float,3,Eigen::Affine> t(
+            Eigen::AngleAxisf((rotate_model==1)?-M_PI/2:0, Eigen::Vector3f::UnitX()) *
+            Eigen::AngleAxisf((rotate_model==2)?-M_PI/2:0, Eigen::Vector3f::UnitY()) *
+            Eigen::AngleAxisf((rotate_model==3)?-M_PI/2:0, Eigen::Vector3f::UnitZ())
+        );
+        
+        if (rotate_model != 0) {
+            Eigen::Vector3f p;
+            for (int i = 0; i < V.rows(); ++i) {
+                p = V.row(i).transpose();
+                V.row(i) = t * p;
+            }
+        }
+    };
 
     bool is3d = (filename.find("woody") == 0 || filename.find("thin") == 0) ? 
         false : true;
@@ -67,6 +92,7 @@ int main(int argc, char*argv[]) {
     } else {
         igl::readOBJ(DATA_PATH+filename+".obj", V, F);
     }
+    apply_rotation(V);
     U = V;
 
     Eigen::MatrixXf W;
@@ -79,10 +105,11 @@ int main(int argc, char*argv[]) {
     Eigen::MatrixXi BE;
     igl::readTGF(DATA_PATH+filename+".tgf", Cd, BE);
     C = Cd.cast<float>();
+    apply_rotation(C);
 
     ReduceSupportConfig config;
     config.is3d = is3d;
-    config.alpha_max = 0.25 * M_PI;
+    config.alpha_max = alpha_max;
     config.dp = Eigen::RowVector3f(0., 1., 0.);
     config.rotation_angle = rotation_angle;
     config.pso_iters = pso_iters;

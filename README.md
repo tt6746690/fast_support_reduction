@@ -17,4 +17,8 @@ cmake .. -DWITH_DEBUG=OFF
 cmake .. -DWITH_VISUALIZE=ON
 
 make
+
+# debugging
+lldb build/support_reduction
+process launch -- hand 1 1 20 0.0001 1 1
 ```

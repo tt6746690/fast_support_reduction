@@ -124,7 +124,7 @@ float reduce_support(
     arap_precompute(V, F, M, L, K);
 
     // Overhang
-    double tau = std::sin(config.alpha_max);
+    double tau = std::cos(config.alpha_max);
     Eigen::VectorXi bnd;
     Eigen::MatrixXi unsafe;     // risky faces for visualization
     igl::boundary_loop(F, bnd);
@@ -198,8 +198,9 @@ float reduce_support(
             E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, unsafe);
         }
         
-        E_arap = arap_energy(V, T, M, F, L, K);
+        E_arap = arap_energy(V, T, M, config.is3d?Tet:F, L, K, config.is3d);
         E_intersect = 0;
+
 
         iter += 1;
         float fX = (float) (
@@ -207,6 +208,7 @@ float reduce_support(
             config.c_overhang * E_overhang + 
             config.c_intersect * E_intersect
         );
+
 
         std::cout<<"["<<iter<<"] f(X): "<<fX<<
             "\t\t("<<config.c_arap*E_arap<<", "<<

@@ -29,6 +29,7 @@ add_definitions(${CMAKE_CXX_FLAGS} "-Wall")
 option(LIBIGL_WITH_OPENGL            "Use OpenGL"         ON)
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
+option(LIBIGL_WITH_TETGEN            "Use Tetgen"         ON)
 find_package(LIBIGL REQUIRED QUIET)
 
 # minitrace
@@ -43,8 +44,8 @@ file(GLOB SRCFILES
 
 # executables
 
-# add_executable(bbw bbw.cpp ${SRCFILES})
-# target_link_libraries(bbw igl::core igl::opengl_glfw)
+add_executable(bbw bbw.cpp ${SRCFILES})
+target_link_libraries(bbw igl::core igl::opengl_glfw igl::tetgen)
 
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 target_link_libraries(support_reduction igl::core igl::opengl_glfw)
