@@ -124,7 +124,7 @@ float reduce_support(
     arap_precompute(V, F, M, L, K);
 
     // Overhang
-    double tau = std::sin(config.alpha_max);
+    double tau = std::cos(config.alpha_max);
     Eigen::VectorXi bnd;
     Eigen::MatrixXi unsafe;     // risky faces for visualization
     igl::boundary_loop(F, bnd);

@@ -32,6 +32,7 @@ int main(int argc, char*argv[]) {
     double c_arap = 1;
     double c_overhang = 1;
     double c_intersect = 1;
+    double alpha_max = 0.25 * M_PI;     // 45
     double rotation_angle = M_PI / 10;
 
     if (argc == 2) {
@@ -46,14 +47,15 @@ int main(int argc, char*argv[]) {
         pso_iters = std::stoi(argv[2]);
         pso_population = std::stoi(argv[3]);
     }
-    if (argc == 8) {
+    if (argc == 9) {
         filename = argv[1];
         pso_iters = std::stoi(argv[2]);
         pso_population = std::stoi(argv[3]);
-        rotation_angle = (std::stod(argv[4]) / 180.) * M_PI / 2;
-        c_arap = std::stod(argv[5]);
-        c_overhang = std::stod(argv[6]);
-        c_intersect = std::stod(argv[7]);
+        alpha_max = (std::stod(argv[4]) / 180.) * M_PI;
+        rotation_angle = (std::stod(argv[5]) / 180.) * M_PI / 2;
+        c_arap = std::stod(argv[6]);
+        c_overhang = std::stod(argv[7]);
+        c_intersect = std::stod(argv[8]);
     }
 
     bool is3d = (filename.find("woody") == 0 || filename.find("thin") == 0) ? 
@@ -82,7 +84,7 @@ int main(int argc, char*argv[]) {
 
     ReduceSupportConfig config;
     config.is3d = is3d;
-    config.alpha_max = 0.25 * M_PI;
+    config.alpha_max = alpha_max;
     config.dp = Eigen::RowVector3f(0., 1., 0.);
     config.rotation_angle = rotation_angle;
     config.pso_iters = pso_iters;

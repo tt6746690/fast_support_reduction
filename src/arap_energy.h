@@ -4,18 +4,18 @@
 
 #include <Eigen/Core>
 #include <Eigen/Sparse>
-#include <igl/min_quad_with_fixed.h>
 
+#include <igl/min_quad_with_fixed.h>
 #include <igl/normalize_row_sums.h>
 #include <igl/cotmatrix.h>
 #include <igl/min_quad_with_fixed.h>
 #include <igl/polar_svd3x3.h>
 #include <igl/fit_rotations.h>
+
 #include <vector>
 #include <utility>
-#include <initializer_list>
 
-typedef std::initializer_list<std::pair<int, int>> lii;
+typedef std::vector<std::pair<int, int>> lii;
 
 // Precompute data needed to compute ARAP energy
 //
@@ -189,7 +189,6 @@ double arap_energy(
     Matrix3T R_a;
     Vector3T new_vec, old_vec, old_vec_T, trans_old_vec, diff_vec;
     for (int i = 0; i < F.rows(); i++) {
-
         for (auto p : edge_indices) {
             a = F(i, p.first);
             b = F(i, p.second);
