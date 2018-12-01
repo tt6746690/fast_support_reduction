@@ -164,48 +164,15 @@ double arap_energy(
     C = K.transpose() * U;
 
 
-    // // construct matrix R
-    // const int size = U.rows();
-    // MatrixXT R(C.rows(), C.cols());
-    // Matrix3T Ck, Rk;
-    // for (int k = 0; k < size; k++) {
-    //     Ck = C.block(3 * k, 0, 3, 3);
-    //     igl::polar_svd3x3(Ck, Rk);
-    //     R.block(3 * k, 0, 3, 3) = Rk;
-    // }
-
     MatrixXT R(C.cols(), C.rows());
-    if (is3d) {
-
-        // igl::fit_rotations_SSE(C, R);
-
-        // construct matrix R
-        const int size = U.rows();
-        Matrix3T Ck, Rk;
-        for (int k = 0; k < size; k++) {
-            Ck = C.block(3 * k, 0, 3, 3);
-            igl::polar_svd3x3(Ck, Rk);
-            R.block(0, 3 * k, 3, 3) = Rk;
-        }
-
-    }
-    else {
-
-        igl::fit_rotations_planar(C, R);
-
-
-
-        // // construct matrix R
-        // const int size = U.rows();
-        // Matrix3T Ck, Rk;
-        // for (int k = 0; k < size; k++) {
-        //     Ck = C.block(3 * k, 0, 3, 3);
-        //     igl::polar_svd3x3(Ck, Rk);
-        //     R.block(0, 3 * k, 3, 3) = Rk;
-        // }
-
-        std::cout << "C " << C.topRows(20) << std::endl;
-
+    
+    // construct matrix R
+    const int size = U.rows();
+    Matrix3T Ck, Rk;
+    for (int k = 0; k < size; k++) {
+        Ck = C.block(3 * k, 0, 3, 3);
+        igl::polar_svd3x3(Ck, Rk);
+        R.block(0, 3 * k, 3, 3) = Rk;
     }
 
 
