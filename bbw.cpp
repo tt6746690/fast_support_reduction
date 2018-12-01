@@ -4,12 +4,13 @@
 #include <igl/jet.h>
 #include <igl/normalize_row_sums.h>
 #include <igl/readDMAT.h>
+#include <igl/writeMESH.h>
 #include <igl/writeDMAT.h>
 #include <igl/readMESH.h>
 #include <igl/readTGF.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/bbw.h>
-#include <igl/copyleft/tetgen/tetrahedralize.h>
+#include <igl/copyleft/tetgen/mesh_with_skeleton.h>
 
 
 #include "src/defs.h"
@@ -30,18 +31,18 @@ int main(int argc, char*argv[]) {
     Eigen::MatrixXd V, C;
     Eigen::MatrixXi F, T, BE;
 
-
     // igl::readMESH(DATA_PATH+filename+".mesh",V,T,F);
     igl::readOBJ(DATA_PATH+filename+".obj", V, F);
-
     igl::readTGF(DATA_PATH+filename+".tgf", C, BE);
 
-    Eigen::MatrixXd TV;
-    Eigen::MatrixXi TF, TT;
-    igl::copyleft::tetgen::tetrahedralize(V, F, "pq1.414a0.01", TV, TT, TF);
+    Eigen::MatrixXd VV;
+    Eigen::MatrixXi TT, FF;
+    igl::copyleft::tetgen::mesh_with_skeleton(V, F, C, VectorXi(), BE, MatrixXi(), 50, "pq2Y", VV, TT, FF);
 
-
-
+    // somehow remeshing inverts orientation of faces
+    Eigen::VectorXi acol = FF.col(1);
+    FF.col(1) = FF.col(2);
+    FF.col(2) = acol;
 
     // Compute bbw
 
@@ -49,29 +50,29 @@ int main(int argc, char*argv[]) {
     // bc: List of boundary conditions of each weight function
     Eigen::VectorXi b;
     Eigen::MatrixXd bc;
-    bool result = igl::boundary_conditions(V, F, C, VectorXi(), BE, MatrixXi(), b, bc);
-    if (!result)
-        printf("boundary_conditions result suspicious\n");
+    igl::boundary_conditions(VV, TT, C, VectorXi(), BE, MatrixXi(), b, bc);
 
     // Compute weight matrix
     int selected = 0;
     Eigen::MatrixXd W;
     igl::BBWData bbw_data;
-    bbw_data.active_set_params.max_iter = 30;
+    bbw_data.active_set_params.max_iter = 80;
     bbw_data.verbosity = 2;
-    if (!igl::bbw(V, F, b, bc, bbw_data, W)) {
+    if (!igl::bbw(VV, TT, b, bc, bbw_data, W)) {
         printf("Failed to compute bbw\n");
     }
     // enforce parity of unity constraint
     igl::normalize_row_sums(W, W);
     // outputs bbw weights
     igl::writeDMAT(DATA_PATH+filename+".dmat", W, true);
+    // outputs tet mesh
+    igl::writeMESH(DATA_PATH+filename+".mesh", VV, TT, FF);
 
     bool display = true;
     if (display) {
         const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
         igl::opengl::glfw::Viewer viewer;
-        viewer.data().set_mesh(V, F);
+        viewer.data().set_mesh(VV, FF);
         const auto set_color = [&](igl::opengl::glfw::Viewer &viewer) {
             Eigen::MatrixXd C;
             igl::jet(W.col(selected).eval(),true,C);
@@ -103,4 +104,5 @@ int main(int argc, char*argv[]) {
         "Press ',' to show previous weight function."<<endl<<
         viewer.launch();
     }
+
 }

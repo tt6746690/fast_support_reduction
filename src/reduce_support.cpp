@@ -277,7 +277,7 @@ float reduce_support(
 
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
-    viewer.data().line_width = 1;
+    viewer.data().line_width = 20;
     viewer.callback_key_down = 
         [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
             switch(key) {
