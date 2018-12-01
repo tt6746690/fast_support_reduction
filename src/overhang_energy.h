@@ -116,8 +116,7 @@ double overhang_energy_3d(
 
 #ifdef VISUALIZE
         if (e < 0) {
-            auto degree = (1. - std::acos(N.row(i).normalized().dot(dp)) / M_PI) * 180;
-            std::cout << "theta (degrees): " << degree << ";  tau: " << tau << '\n';
+            // std::cout << "theta (degrees): " << ( (1. - std::acos(N.row(i).normalized().dot(dp)) / M_PI) * 180) << ";  tau: " << tau << '\n';
             t = F.row(i);
             unsafe.row(k)   << t(0), t(1);
             unsafe.row(k+1) << t(1), t(2);
