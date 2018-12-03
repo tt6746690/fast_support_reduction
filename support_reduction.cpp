@@ -1,6 +1,7 @@
 #include <Eigen/Core>
 
 #include <igl/readOBJ.h>
+#include <igl/readOFF.h>
 #include <igl/readDMAT.h>
 #include <igl/lbs_matrix.h>
 #include <igl/partition.h>
@@ -64,13 +65,14 @@ int main(int argc, char*argv[]) {
     Eigen::MatrixXi F;
     Eigen::RowVector3f last_mouse;
     long sel = -1;
-    igl::readOBJ(DATA_PATH "woody.obj", V, F);
+    //igl::readOBJ(DATA_PATH "woody.obj", V, F);
+    igl::readOFF(DATA_PATH "decimated-knight.off", V, F);
     U = V;
 
     // #b x m, where `m` is number of bones
     Eigen::MatrixXd W, M;
-    igl::readDMAT(DATA_PATH "woody.dmat", W);
-    igl::lbs_matrix(V, W, M);
+    //igl::readDMAT(DATA_PATH "woody.dmat", W);
+    //igl::lbs_matrix(V, W, M);
 
     igl::min_quad_with_fixed_data<double> arap_data;
     Eigen::SparseMatrix<double> arap_K, L;
@@ -114,7 +116,7 @@ int main(int argc, char*argv[]) {
                 );
             }*/
 
-            std::vector<Eigen::Vector3d> intersections;
+            /*std::vector<Eigen::Vector3d> intersections;
             double in = self_intersection(U, F, intersections);
             std::cout << "intersection energy: " << in << std::endl;
             
@@ -125,7 +127,10 @@ int main(int argc, char*argv[]) {
                     (intersections[2 * i + 1]).transpose(),
                     red
                 );
-            }
+            }*/
+
+            double in = self_intersection_3d(U, F);
+            std::cout << "intersection energy: " << in << std::endl;
 
         }
         viewer.data().compute_normals();
@@ -282,7 +287,7 @@ int main(int argc, char*argv[]) {
                 );
             }*/
 
-            std::vector<Eigen::Vector3d> intersections;
+            /*std::vector<Eigen::Vector3d> intersections;
             double in = self_intersection(U, F, intersections);
             std::cout << "intersection energy: " << in << std::endl;
 
@@ -293,7 +298,10 @@ int main(int argc, char*argv[]) {
                     (intersections[2 * i + 1]).transpose(),
                     red
                 );
-            }
+            }*/
+
+            double in = self_intersection_3d(U, F);
+            std::cout << "intersection energy: " << in << std::endl;
 
             update();
         }
