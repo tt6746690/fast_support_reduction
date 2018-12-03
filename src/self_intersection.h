@@ -3,8 +3,13 @@
 #include <Eigen/Sparse>
 #include <Eigen/Core>
 
+// for 2D
 #define POS 1
 #define NEG -1
+
+// for 3D
+#define IN -1
+#define OUT 1
 
 // Return the self-intersecting area.
 //
@@ -15,5 +20,14 @@ double self_intersection(
     const Eigen::MatrixXd V,
     const Eigen::MatrixXi F,
     std::vector<Eigen::Vector3d> & intersection);
+
+// Return the self-intersecting volume of a 3D mesh.
+//
+// Inputs:
+//      V   #V by 3 list of vertices
+//      F   #F by 3 list of triangle faces
+double self_intersection_3d(
+    const Eigen::MatrixXd V,
+    const Eigen::MatrixXi F);
 
 #endif

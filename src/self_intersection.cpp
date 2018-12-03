@@ -1,5 +1,8 @@
 #include "self_intersection.h"
 #include <igl/boundary_loop.h>
+#include <igl/per_face_normals.h>
+#include <tuple>
+#include <Eigen/Sparse>
 
 struct Point {
     Eigen::VectorXd coord;
@@ -25,6 +28,13 @@ bool sort_by_y(
     return std::min(e1.p1.coord[1], e1.p2.coord[1]) < std::min(e2.p1.coord[1], e2.p2.coord[1]);
 }
 
+bool sort_by_first(
+    const std::tuple<double, int> t1,
+    const std::tuple<double, int> t2) 
+{
+    return std::get<0>(t1) < std::get<0>(t2);
+}
+
 double calculate_y(
     const Eigen::VectorXd v1,
     const Eigen::VectorXd v2,
@@ -33,6 +43,83 @@ double calculate_y(
     double m = (v2[1] - v1[1]) / (v2[0] - v1[0]);
     double b = v1[1] - m * v1[0];
     return m * x + b;
+}
+
+void surrounding_points(
+    Eigen::Vector3d v1,
+    Eigen::Vector3d v2,
+    Eigen::Vector3d v3,
+    Eigen::Vector3d corner,
+    double step,
+    int & x1,
+    int & x2,
+    int & y1,
+    int & y2) 
+{
+    x1 = floor((std::min(v1[0], std::min(v2[0], v3[0])) - corner[0]) / step);
+    x2 = floor((std::max(v1[0], std::max(v2[0], v3[0])) - corner[0]) / step);
+    y1 = floor((std::min(v1[1], std::min(v2[1], v3[1])) - corner[1]) / step);
+    y2 = floor((std::max(v1[1], std::max(v2[1], v3[1])) - corner[1]) / step);
+}
+
+bool point_in_triangle(
+    Eigen::Vector3d v1,
+    Eigen::Vector3d v2,
+    Eigen::Vector3d v3,
+    Eigen::Vector3d p,
+    double & alpha,
+    double & beta,
+    double & gamma)
+{
+    // barycentric coordinates
+    alpha = ((v2[1] - v3[1])*(p[0] - v3[0]) + (v3[0] - v2[0])*(p[1] - v3[1])) /
+        ((v2[1] - v3[1])*(v1[0] - v3[0]) + (v3[0] - v2[0])*(v1[1] - v3[1]));
+    beta = ((v3[1] - v1[1])*(p[0] - v3[0]) + (v1[0] - v3[0])*(p[1] - v3[1])) /
+        ((v2[1] - v3[1])*(v1[0] - v3[0]) + (v3[0] - v2[0])*(v1[1] - v3[1]));
+    gamma = 1 - alpha - beta;
+
+    return alpha > 0 && beta > 0 && gamma > 0;
+}
+
+std::vector<std::tuple<int, double>> grid_points_in_triangle(
+    Eigen::Vector3d v1,
+    Eigen::Vector3d v2,
+    Eigen::Vector3d v3,
+    double step,
+    Eigen::Vector3d corner,
+    int nx,
+    int ny) 
+{
+    int x1, x2, y1, y2;
+    surrounding_points(v1, v2, v3, corner, step, x1, x2, y1, y2);
+
+    int cur_x = x1;
+    std::vector<std::tuple<int, double>> points_in_triangle;
+
+    while (y1 < y2) 
+    {
+        while (cur_x < x2) 
+        {
+            assert(cur_x < nx);
+            assert(y1 < ny);
+
+            Eigen::Vector3d cur_pos(cur_x * step + corner[0], y1 * step + corner[1], 0);
+            double alpha, beta, gamma;
+            if (point_in_triangle(v1, v2, v3, cur_pos, alpha, beta, gamma)) 
+            {
+                Eigen::Vector3d p = alpha * v1 + beta * v2 + gamma * v3;
+                int idx = y1 * nx + cur_x;
+                points_in_triangle.push_back(std::tuple<int, double>(idx, p[2]));
+            }
+
+            cur_x++;
+        }
+
+        cur_x = x1;
+        y1++;
+    }
+
+    return  points_in_triangle;
 }
 
 double self_intersection(
@@ -73,7 +160,7 @@ double self_intersection(
         int expected_dir;
         int levels_deep = 0;
         int prev_depth = 0;
-        
+
         for (int j = 0; j < boundary_edges.size(); j++) 
         {
             Edge e = boundary_edges[j];
@@ -129,4 +216,97 @@ double self_intersection(
     }
 
     return area;
+}
+
+double self_intersection_3d(
+    const Eigen::MatrixXd V,
+    const Eigen::MatrixXi F)
+{
+    Eigen::MatrixXd N;
+    igl::per_face_normals(V, F, N);
+
+    // define grid
+    double x_min = V.col(0).minCoeff();
+    double x_max = V.col(0).maxCoeff();
+    double delta = (x_max - x_min) / 1000;
+    x_min -= delta;
+    x_max += delta;
+    double y_min = V.col(1).minCoeff() - delta;
+    double y_max = V.col(1).maxCoeff() + delta;
+    double z_min = V.col(2).minCoeff();
+    double step = sqrt((x_max - x_min) * (y_max - y_min) / (F.rows() * 16));
+    int nx = round((x_max - x_min) / step);
+    int ny = round((y_max - y_min) / step);
+    Eigen::Vector3d corner(x_min, y_min, z_min);
+
+    Eigen::SparseMatrix<double> hits(F.rows(), nx * ny);
+    typedef Eigen::Triplet<double> T;
+    std::vector<T> triplets;
+    triplets.reserve(F.rows());
+
+    for (int i = 0; i < F.rows(); i++) 
+    {
+        Eigen::RowVector3i f = F.row(i);
+        std::vector<std::tuple<int, double>> points_in_triangle = grid_points_in_triangle(
+            V.row(f[0]), V.row(f[1]), V.row(f[2]), step, corner, nx, ny);
+
+        for (int j = 0; j < points_in_triangle.size(); j++) {
+            std::tuple<int, double> t = points_in_triangle[j];
+            triplets.push_back(T(i, std::get<0>(t), std::get<1>(t)));
+        }
+    }
+
+    hits.setFromTriplets(triplets.begin(), triplets.end());
+
+    double volume = 0;
+    double z;
+
+    for (int i = 0; i < hits.outerSize(); i++)
+    {
+        std::vector<std::tuple<double, int>> zs;
+        for (Eigen::SparseMatrix<double>::InnerIterator it(hits, i); it; ++it)
+        {
+            zs.push_back(std::tuple<double, int>(it.value(), it.row()));
+        }
+
+        std::sort(zs.begin(), zs.end(), sort_by_first);
+        int cur_depth = 0;
+        int prev_depth = 0;
+        int expected_dir = IN;
+
+        for (int j = 0; j < zs.size(); j++) 
+        {
+            if (zs.size() % 2 == 1) { continue; }
+
+            Eigen::RowVector3d n = N.row(std::get<1>(zs[j]));
+            int actual_dir = n[2] / abs(n[2]);
+            prev_depth = cur_depth;
+            cur_depth += actual_dir;
+
+            if (expected_dir != actual_dir && cur_depth < 0) 
+            {
+                // just entered self-intersection
+                if (abs(cur_depth) == 2)
+                {
+                    z = std::get<0>(zs[j]);
+                }
+                else
+                {
+                    double new_z = std::get<0>(zs[j]);
+                    volume += new_z - z;
+                    z = new_z;
+                }
+            }
+            else if (abs(cur_depth) == 1 && prev_depth != 0)
+            {
+                double new_z = std::get<0>(zs[j]);
+                volume += new_z - z;
+                z = new_z;
+            }
+
+            expected_dir = cur_depth == 0 ? IN : -cur_depth / abs(cur_depth);
+        }
+    }
+
+    return volume;
 }
