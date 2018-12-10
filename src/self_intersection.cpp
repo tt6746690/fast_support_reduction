@@ -124,13 +124,13 @@ std::vector<std::tuple<int, double>> grid_points_in_triangle(
     return  points_in_triangle;
 }
 
-double self_intersection(
-    const Eigen::MatrixXd V,
-    const Eigen::MatrixXi F,
-    std::vector<Eigen::Vector3d> & intersection) 
+double self_intersection_2d(
+    const Eigen::MatrixXf Vf,
+    const Eigen::MatrixXi F)
 {
     MTR_SCOPE_FUNC();
 
+    Eigen::MatrixXd V = Vf.cast<double>();
     Eigen::VectorXi loop;
     igl::boundary_loop(F, loop);
 
@@ -196,18 +196,15 @@ double self_intersection(
                     else 
                     {
                         int new_y = calculate_y(v1, v2, x);
-                        area += new_y - y;
-                        intersection.push_back(Eigen::Vector3d(x, y, 0));
-                        intersection.push_back(Eigen::Vector3d(x, new_y, 0));
+                        // need absolute value since order of edges can be a little off
+                        area += abs(new_y - y);
                         y = new_y;
                     }
                 }
                 else if (abs(levels_deep) == 1 && abs(prev_depth) != 0)
                 {
                     int new_y = calculate_y(v1, v2, x);
-                    area += new_y - y;
-                    intersection.push_back(Eigen::Vector3d(x, y, 0));
-                    intersection.push_back(Eigen::Vector3d(x, new_y, 0));
+                    area += abs(new_y - y);
                     y = new_y;
                 }
 
@@ -223,11 +220,12 @@ double self_intersection(
 }
 
 double self_intersection_3d(
-    const Eigen::MatrixXd V,
+    const Eigen::MatrixXf Vf,
     const Eigen::MatrixXi F)
 {
     MTR_SCOPE_FUNC();
 
+    Eigen::MatrixXd V = Vf.cast<double>();
     Eigen::MatrixXd N;
     igl::per_face_normals(V, F, N);
 
@@ -240,7 +238,7 @@ double self_intersection_3d(
     double y_min = V.col(1).minCoeff() - delta;
     double y_max = V.col(1).maxCoeff() + delta;
     double z_min = V.col(2).minCoeff();
-    double step = sqrt((x_max - x_min) * (y_max - y_min) / (F.rows() * 16));
+    double step = sqrt((x_max - x_min) * (y_max - y_min) / (F.rows() * 8));
     int nx = round((x_max - x_min) / step);
     int ny = round((y_max - y_min) / step);
     Eigen::Vector3d corner(x_min, y_min, z_min);
@@ -289,25 +287,14 @@ double self_intersection_3d(
             prev_depth = cur_depth;
             cur_depth += actual_dir;
 
-            if (expected_dir != actual_dir && cur_depth < 0) 
+            if (abs(cur_depth) == 2 && abs(prev_depth) == 1) 
             {
-                // just entered self-intersection
-                if (abs(cur_depth) == 2)
-                {
-                    z = std::get<0>(zs[j]);
-                }
-                else
-                {
-                    double new_z = std::get<0>(zs[j]);
-                    volume += new_z - z;
-                    z = new_z;
-                }
+                z = std::get<0>(zs[j]);
             }
-            else if (abs(cur_depth) == 1 && prev_depth != 0)
+            else if (abs(cur_depth) == 1 && abs(prev_depth) == 2) 
             {
                 double new_z = std::get<0>(zs[j]);
                 volume += new_z - z;
-                z = new_z;
             }
 
             expected_dir = cur_depth == 0 ? IN : -cur_depth / abs(cur_depth);
