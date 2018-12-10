@@ -28,4 +28,10 @@ build/support_reduction bb-bunny 10 100 20 45 60 0 0.4 0 0
 
 # the new .tgf, good result! one arm up, one arm down
 build/support_reduction bb-bunny 5 50 50 45 60 50 0.5 1 0
+
+# both arm up 
+build/support_reduction bb-bunny 5 50 50 45 90 20 30 1 0
+
+# farsee
+build/support_reduction bb-bunny 5 120 200 50 90 20 40 0.5 0
 ```
