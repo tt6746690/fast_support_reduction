@@ -1,8 +1,9 @@
 \documentclass[10pt]{article}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage[a4paper, total={7in, 9in}]{geometry}
-\usepackage{multicol}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+% \usepackage[a4paper, total={7in, 9in}]{geometry}
+% \usepackage{multicol}
 
 \newcommand{\R}{\mathbb{R}}
 
@@ -23,14 +24,15 @@
 \newcommand{\bK}{\mathbf{K}}
 \newcommand{\bn}{\mathbf{n}}
 \newcommand{\bd}{\mathbf{d}}
-\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bc}{\mathbf{c}}
+\newcommand{\bx}{\mathbf{x}} 
 \newcommand{\ba}{\mathbf{a}}
 \newcommand{\bb}{\mathbf{b}}
-
+ 
 \DeclareMathOperator*{\argmin}{arg\,min} % Jan Hlavacek
 
 \begin{document}
-\begin{multicols}{2}
+% \begin{multicols}{1} 
 
 \subsection*{Introduction}
 When a model needs supports in order to be 3D printed, the printer must use extra material, which makes printing more expensive. Existing work on the problem of how to reduce supports focusses predominantly on how to print support the same areas using less material. However, if the user is not particular about how the model is positioned when it is printed, there may also be a deformation that would require fewer supports. Given a skeleton for the model, we suggest a method to find a deformation using linear blend skinning to minimize the number of supports the model would need to be printed.
@@ -74,10 +76,21 @@ where $\tilde{\bL} = \bM^T \bL \bM \in \R^{(d+1)m \times (d+1)m}$, $\tilde{\bK} 
 
 \subsubsection*{Overhang energy}
 
-An overhanging region that can be 3D printed without support is called \textit{self-supported}. We call the angle between the region's tangent plane and printing direction the \textit{self-supported angle} $\alpha$. Let $\alpha_{max}$ be the maximum supporting angle. Let $\tau = cos(\alpha_{max})$ be the \textit{maximal supporting coefficient}. Let $\partial \calM \subset \bF$ be boundary of mesh $\calM$, i.e. surface faces. A surface face $f$ is \textit{risky} and thus requires support if $\bn(f) \cdot \bd_{p} < -\tau$, where $\bn(f)$ is unit normal of $f$ and $\bd_{p}$ is the printing direction. We can define an overhang energy that measures the support required for 3D printing,
+An overhanging region that can be 3D printed without support is called \textit{self-supported}. We call the angle between the region's tangent plane and printing direction the \textit{self-supported angle} $\alpha$. Let $\alpha_{max}$ be the maximum supporting angle. Let $\tau = cos(\alpha_{max})$ be the \textit{maximal supporting coefficient}. Let $\partial \calM \subset \bF$ be boundary of mesh $\calM$, i.e. surface faces. A surface face $f$ is \textit{risky} and thus requires support if $\bn_f \cdot \bd_{p} < -\tau$, where $\bn_f$ is unit normal of $f$ and $\bd_{p}$ is the printing direction. Let $A(\cdot)$ the area function and $c(\cdot)$ be the centroid function for a face $f$. We can approximate the volume of support required for any face $f$ by computing the volume of a rectangular prism,
 \[
-    E_{overhang}(\bV') = \sum_{f\in \partial \calM} min(\bn(f) \cdot \bd_{p} + \tau, 0)
+    \lambda(f) = 
+    \begin{cases}
+        A_{base} h = A_f |\cos(\theta_f)| (\bc_f \cdot \bd_{p}) = A_f |\bn_f \cdot \bd_{p}| (\bc_f \cdot \bd_{p}) & \text{if } \bn(f) \cdot \bd_{p} < -\tau \\
+        0 & otherwise \\
+    \end{cases}
 \]
+where $A_f$ is the area of the face, $\bc_f$ is the centroid of the face, and $\theta_f$ is the angle between $\bd_{p}$ and $\bn_f$. We define an overhang energy that measures the volume of support required,
+\[
+    E_{overhang}(\bV') = \sum_{f\in \partial \calM} \lambda(f)
+\]
+% \[
+%     E_{overhang}(\bV') = \sum_{f\in \partial \calM} min(\bn(f) \cdot \bd_{p} + \tau, 0)
+% \]
 
 
 \subsubsection*{Self-intersection energy}
@@ -103,5 +116,5 @@ Finally, we can convert each component to $\bT_j$, affine transformations for ed
 In future work, we would like to speed up the calculations with a GPU. This would reduce wait time for the user and introduce the possibility of user interactivity, so that a user could have some control over the model's final position. We would also like to have the optimizer consider how the deformation shifts the model's center of mass, so that the model would still be able to stand on its own once it has been printed.
 
 
-\end{multicols} 
+% \end{multicols} 
 \end{document}

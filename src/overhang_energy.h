@@ -4,6 +4,7 @@
 #include <Eigen/Sparse>
 
 #include <igl/per_face_normals.h>
+#include <igl/doublearea.h>
 
 #include "minitrace.h"
 
@@ -77,6 +78,29 @@ double overhang_energy_2d(
 }
 
 
+// Computes per-face centroid coordinate for triangle mesh in 3d
+//
+// Inputs:
+//      V,  #V by dim
+//      F,  #F by dim   surface meshes
+// Outputs:
+//      C,  #F by dim   per centroid coordinate
+template <
+    typename DerivedV,
+    typename DerivedF,
+    typename DerivedC>
+void per_face_centroid(
+    const Eigen::MatrixBase<DerivedV>& V,
+    const Eigen::MatrixBase<DerivedF>& F,
+    Eigen::MatrixBase<DerivedC>& C)
+{
+    for (int i = 0; i < F.rows(); ++i) {
+        C.row(i) = (V.row(F(i, 0)) + V.row(F(i, 1)) + V.row(F(i, 2))) / 3;
+    }
+}
+
+// Note V should be in first quadrant
+// 
 // Inputs:
 //      V,  #V by dim
 //      F,  #F by dim   surface meshes
@@ -97,13 +121,25 @@ double overhang_energy_3d(
 {
     MTR_SCOPE_FUNC();
     typedef typename DerivedV::Scalar ScalarV;
+    typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, 1> VectorXVT;
     typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, Eigen::Dynamic> MatrixXVT;
 
+    double negtau = -tau;
     double e;
     double energy = 0;
 
     MatrixXVT N;
     igl::per_face_normals(V, F, N);
+
+    VectorXVT A;
+    igl::doublearea(V, F, A);
+
+    MatrixXVT C(F.rows(), V.cols());
+    VectorXVT h(F.rows());
+    per_face_centroid(V, F, C);
+    for (int i = 0; i < C.rows(); ++i) {
+        h(i) = C.row(i).dot(dp);
+    }
 
 #ifdef VISUALIZE
     int k = 0;  // number of unsafe edges
@@ -112,10 +148,10 @@ double overhang_energy_3d(
 #endif
 
     for (int i = 0; i < N.rows(); ++i) {
-        e = N.row(i).dot(dp) + tau;
+        e = N.row(i).dot(dp);
 
 #ifdef VISUALIZE
-        if (e < 0) {
+        if (e < negtau) {
             // std::cout << "theta (degrees): " << ( (1. - std::acos(N.row(i).normalized().dot(dp)) / M_PI) * 180) << ";  tau: " << tau << '\n';
             t = F.row(i);
             unsafe.row(k)   << t(0), t(1);
@@ -124,15 +160,19 @@ double overhang_energy_3d(
             k += 3;
         }
 #endif
-        e = std::pow(std::min(e, 0.), 2.0);
-        energy += e;
+
+        if (e < negtau) {
+            // std::cout << "A: " << A(i) << "* cos(theta) " << e << " h " << h(i)  << " total " << A(i) * e * h(i)<< '\n';
+            e = A(i) * e * h(i);
+            energy += e;
+        }
     }
 
 #ifdef VISUALIZE
     unsafe.conservativeResize(k, unsafe.cols());
 #endif
 
-    return energy;
+    return std::abs(energy);
 }
 
 

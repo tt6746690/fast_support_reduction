@@ -15,11 +15,11 @@ cmake ..
 cmake .. -DWITH_DEBUG=OFF
 # visualize correctness of energy computation
 cmake .. -DWITH_VISUALIZE=ON
-cmake .. -DWITH_VISUALIZE=ON -DWITH_DEBUG=OFF
+cmake .. -DWITH_VISUALIZE=ON -DWITH_DEBUG=ON
 
 make
 
 # debugging
 lldb build/support_reduction
-process launch -- hand 1 1 20 0.0001 1 1
+process launch -- hand 1 1 1 45 20 100 1 10 0
 ```

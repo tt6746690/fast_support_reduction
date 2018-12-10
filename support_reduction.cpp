@@ -93,7 +93,6 @@ int main(int argc, char*argv[]) {
         igl::readOBJ(DATA_PATH+filename+".obj", V, F);
     }
     apply_rotation(V);
-    U = V;
 
     Eigen::MatrixXd W;
     igl::readDMAT(DATA_PATH+filename+".dmat", W);
@@ -103,6 +102,13 @@ int main(int argc, char*argv[]) {
     Eigen::MatrixXi BE;
     igl::readTGF(DATA_PATH+filename+".tgf", C, BE);
     apply_rotation(C);
+
+    // move V to first quadrant
+    Eigen::RowVector3d min = V.colwise().minCoeff();
+    V = V.rowwise() - min;
+    C = C.rowwise() - min;
+    U = V;
+
 
     std::vector<int> fixed_bones;
     if (BE.rows() != 0 && n_fixed_bones != 0) {
@@ -118,6 +124,7 @@ int main(int argc, char*argv[]) {
             [&proj_dist](int i, int j) { return proj_dist[i] < proj_dist[j]; });
         fixed_bones.resize(n_fixed_bones);
     }
+
 
     ReduceSupportConfig<double> config;
     config.is3d = is3d;
@@ -166,17 +173,26 @@ int main(int argc, char*argv[]) {
             viewer.data().add_edges(VCoord.row(0), VCoord.row(i), green);
         }
     };
-    const auto draw_fixed_bones = [&](igl::opengl::glfw::Viewer &viewer, std::vector<int>& fixed_bones) {
+    const auto draw_fixed_bones = [&](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, std::vector<int>& fixed_bones) {
         for (int i = 0; i < fixed_bones.size(); ++i) {
             auto edge = BE.row(fixed_bones[i]);
-            viewer.data().add_edges(C.row(edge(0)), C.row(edge(1)), blue);
+            viewer.data().add_edges(C.row(edge(0)), C.row(edge(1)), red);
         }
     };
+    const auto draw_bones = [&](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE) {
+        viewer.data().add_points(C, sea_green);
+        for (int i = 0; i < BE.rows(); ++i) {
+            viewer.data().add_edges(C.row(BE(i, 0)), C.row(BE(i, 1)), sea_green);
+        }
+        for (int i = 0; i < C.rows(); ++i) {
+            viewer.data().add_label(C.row(i), std::to_string(i));
+        }
+    };
+
     viewer.data().set_mesh(U, F);
-    viewer.data().add_points(C, sea_green);
-    viewer.data().set_edges(C, BE, sea_green);
+    draw_bones(viewer, C, BE);
     draw_coordsys(viewer, U);
-    draw_fixed_bones(viewer, fixed_bones);
+    draw_fixed_bones(viewer, C, fixed_bones);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 20;
@@ -205,27 +221,25 @@ int main(int argc, char*argv[]) {
                     // reset mesh 
                     viewer.data().set_mesh(U, F);
                     draw_coordsys(viewer, U);
-                    draw_fixed_bones(viewer, fixed_bones);
 
                     // deformed bones
                     Eigen::MatrixXd CT;
                     Eigen::MatrixXi BET;
                     igl::deform_skeleton(C, BE, T, CT, BET);
-                    viewer.data().add_points(CT, sea_green);
-                    for (int i = 0; i < BET.rows(); ++i) {
-                        viewer.data().add_edges(CT.row(BET(i, 0)), CT.row(BET(i, 1)), sea_green);
-                    }
+                    draw_bones(viewer, CT, BET);
+                    draw_fixed_bones(viewer, CT, fixed_bones);
 
                     // risky overhangs on deformed mesh
-                    std::cout << "size: " << config.unsafe.rows();
                     for (int i = 0; i < config.unsafe.rows(); ++i) {
                         viewer.data().add_edges(U.row(config.unsafe(i, 0)), U.row(config.unsafe(i, 1)), red);
                     }
 
+                    std::string outf = DATA_PATH+filename+"_deformed_" + std::to_string(pso_iters);
                     if (config.is3d) {
-                        igl::writeMESH(DATA_PATH+filename+"_deformed.mesh", U, Tet, F);
+                        igl::writeOBJ(outf + ".obj", U, F);
+                        igl::writeMESH(outf + ".mesh", U, Tet, F);
                     } else {
-                        igl::writeOBJ(DATA_PATH+filename+"_deformed.obj", U, F);
+                        igl::writeOBJ(outf + ".obj", U, F);
                     }
                     break;              
             }
