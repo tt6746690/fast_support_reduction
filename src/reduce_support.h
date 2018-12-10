@@ -4,30 +4,67 @@
 #include <Eigen/Sparse>
 
 
+template <typename T>
 class ReduceSupportConfig{
-public: 
-    ReduceSupportConfig();
+public:
+    ReduceSupportConfig()
+        :   is3d(true),
+            alpha_max(0.25*M_PI), 
+            dp(0.,1.,0.),
+            rotation_angle(0.25*M_PI),
+            pso_iters(1),
+            pso_population(1),
+            c_arap(1),
+            c_overhang(1),
+            c_intersect(1),
+            unsafe(),
+            display(false)
+        {}
+
+    // ctor conversion
+    template <typename U>
+    ReduceSupportConfig(const ReduceSupportConfig<U>& that) {
+        this->is3d = that.is3d;
+        this->alpha_max = (T) that.alpha_max;
+        this->dp = that.dp.template cast<T>();
+        this->rotation_angle = (T) that.rotation_angle;
+        this->pso_iters = that.pso_iters;
+        this->pso_population = that.pso_population;
+        this->c_arap = (T) that.c_arap;
+        this->c_overhang = (T) that.c_overhang;
+        this->c_intersect = (T) that.c_intersect;
+        this->display = that.display;
+        this->unsafe = that.unsafe;
+    }
+
 public:
 
-    // input mesh is 3D or 2D
+    // dimension of input mesh 
     bool is3d;
 
-    // overhang
-    double alpha_max;
-    Eigen::RowVector3f dp;
+    //  maximal self-supporting angle
+    T alpha_max;
+    //  normalized printing direction
+    Eigen::Matrix<T, 3, 1> dp;
 
-    // pso
-    double rotation_angle;
+    //  maximum range of rotation for each bone
+    T rotation_angle;
+    //  number of iterations for `pso`
     int pso_iters;
+    //  size of particle swarm `pso`
     int pso_population;
 
-    // coefficients to energy 
-    double c_arap;
-    double c_overhang;
-    double c_intersect;
+    // coefficient to different energy terms
+    T c_arap;
+    T c_overhang;
+    T c_intersect;
+
+    // saved values for visualization
+    Eigen::MatrixXi unsafe;
 
     bool display;
 };
+
 
 
 // Given mesh (V, F), find minimizer of energy using particle swarm optimization
@@ -42,10 +79,7 @@ public:
 //      BE  m x 2              hande edge indexed into C
 //              linear blend skinning weight matrix
 //      W   #V x m(d+1)
-//      alpha_max       maximal self-supporting angle
-//      dp              normalized printing direction
-//      pso_iters       number of iterations for `pso`
-//      pso_populations size of particle swarm `pso`
+//      config                 customizable parameters that controls behavior of the optimization
 //
 //  Outputs:
 //      T   (d+1)m x d
@@ -58,7 +92,6 @@ public:
 //
 //  Returns:
 //      minimum energy function ...
-
 float reduce_support(
     const Eigen::MatrixXf& V,
     const Eigen::MatrixXi& Tet,
@@ -66,10 +99,20 @@ float reduce_support(
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
-    const ReduceSupportConfig& config,
+    ReduceSupportConfig<float>& config,
     Eigen::MatrixXf& T,
     Eigen::MatrixXf& U);
 
+double reduce_support(
+    const Eigen::MatrixXd& V,
+    const Eigen::MatrixXi& Tet,
+    const Eigen::MatrixXi& F,
+    const Eigen::MatrixXd& C,
+    const Eigen::MatrixXi& BE,
+    const Eigen::MatrixXd& W,
+    ReduceSupportConfig<double>& config,
+    Eigen::MatrixXd& T,
+    Eigen::MatrixXd& U);
 
 
 #endif

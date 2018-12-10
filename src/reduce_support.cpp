@@ -5,7 +5,6 @@
 #include <igl/min_quad_with_fixed.h>
 #include <igl/forward_kinematics.h>
 #include <igl/directed_edge_parents.h>
-#include <igl/deform_skeleton.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/boundary_loop.h>
 
@@ -27,18 +26,6 @@ typedef
   std::vector<Eigen::Quaterniond, Eigen::aligned_allocator<Eigen::Quaterniond> >
   RotationList;
 
-ReduceSupportConfig::ReduceSupportConfig()
-:   is3d(true),
-    alpha_max(0.25*M_PI), 
-    dp(0.,1.,0.),
-    rotation_angle(0.25*M_PI),
-    pso_iters(1),
-    pso_population(1),
-    c_arap(1),
-    c_overhang(1),
-    c_intersect(1),
-    display(false)
-{}
 
 
 // convert `X` to stacked transposed transfomration for handles
@@ -87,7 +74,7 @@ float reduce_support(
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
-    const ReduceSupportConfig& config,
+    ReduceSupportConfig<float>& config,
     Eigen::MatrixXf& T,
     Eigen::MatrixXf& U)
 {
@@ -126,7 +113,6 @@ float reduce_support(
     // Overhang
     double tau = std::cos(config.alpha_max);
     Eigen::VectorXi bnd;
-    Eigen::MatrixXi unsafe;     // risky faces for visualization
     igl::boundary_loop(F, bnd);
 
     // Retrieve parents for forward kinematics
@@ -182,7 +168,7 @@ float reduce_support(
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U, &Tet,                           // mesh
         &M, &L, &K,                                 // arap
-        &tau, &bnd, &unsafe                         // overhang
+        &tau, &bnd                                  // overhang
     ](Eigen::RowVectorXf & X) -> float {
 
         MTR_SCOPE_FUNC();
@@ -193,13 +179,13 @@ float reduce_support(
         double E_arap, E_overhang, E_intersect;
 
         if (config.is3d) {
-            E_overhang = overhang_energy_3d(U, F,   config.dp, tau, unsafe);
+            E_overhang = overhang_energy_3d(U, F,   config.dp, tau, config.unsafe);
         } else {
-            E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, unsafe);
+            E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, config.unsafe);
         }
         
         E_arap = arap_energy(V, T, M, config.is3d?Tet:F, L, K, config.is3d);
-        E_intersect = 0;
+        E_intersect = self_intersection_3d(U.cast<double>(), F);
 
 
         iter += 1;
@@ -225,85 +211,30 @@ float reduce_support(
     unzip(X, Cd, BE, P, T);
     U = M * T;
 
-    if (!config.display) {
-        return fX;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    int selected = 0;
-    Eigen::MatrixXd Ud;
-    Ud = U.cast<double>().eval();
-    const Eigen::RowVector3d red(1., 0., 0.);
-    const Eigen::RowVector3d green(0., 1., 0.);
-    const Eigen::RowVector3d blue(0., 1., 0.);
-    const Eigen::RowVector3d sea_green(70./255.,252./255.,167./255.);
-    igl::opengl::glfw::Viewer viewer;
-    const auto set_color = [&](igl::opengl::glfw::Viewer &viewer) {
-            Eigen::MatrixXd CC;
-            igl::jet(W.col(selected).eval(),true,CC);
-            viewer.data().set_colors(CC);
-        };
-    set_color(viewer);
-    // deformed mesh
-    viewer.data().set_mesh(Ud, F);
-    Eigen::MatrixXd CT;
-    Eigen::MatrixXi BET;
-    igl::deform_skeleton(Cd, BE, T.cast<double>().eval(), CT, BET);
-    // deformed joints / bones 
-    viewer.data().add_points(CT, sea_green);
-    viewer.data().set_edges(CT, BET, sea_green);
-    // risky faces (overhang)
-    Eigen::MatrixXd RiskyColors(unsafe.rows(), 3);
-    RiskyColors.rowwise() = red;
-    viewer.data().set_edges(Ud, unsafe, RiskyColors);
-    // coordinates 
-    Eigen::Vector3d min = U.colwise().minCoeff().cast<double>();
-    Eigen::Vector3d max = U.colwise().maxCoeff().cast<double>();
-    Eigen::MatrixXd VCoord(7, 3);
-    VCoord << 0, 0, 0,
-            min(0), 0, 0,
-            max(0), 0, 0,
-            0, min(1), 0,
-            0, max(1), 0,
-            0, 0, min(2),
-            0, 0, max(2);
-    viewer.data().add_points(VCoord, green);
-    for (int i = 1; i < VCoord.rows(); ++i) {
-        viewer.data().add_edges(VCoord.row(0), VCoord.row(i), green);
-    }
-
-    viewer.data().show_lines = false;
-    viewer.data().show_overlay_depth = false;
-    viewer.data().line_width = 20;
-    viewer.callback_key_down = 
-        [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
-            switch(key) {
-                case '.':
-                    selected++;
-                    selected = std::min(std::max(selected,0),(int)W.cols()-1);
-                    set_color(viewer);
-                    break;
-                case ',':
-                    selected--;
-                    selected = std::min(std::max(selected,0),(int)W.cols()-1);
-                    set_color(viewer);
-                    break;
-            }
-            return true;
-        };
-    std::cout<<
-        "Press '.' to show next weight function.\n"<<
-        "Press ',' to show previous weight function.\n";
-    viewer.launch();
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
     return fX;
+}
+
+
+
+double reduce_support(
+    const Eigen::MatrixXd& V,
+    const Eigen::MatrixXi& Tet,
+    const Eigen::MatrixXi& F,
+    const Eigen::MatrixXd& C,
+    const Eigen::MatrixXi& BE,
+    const Eigen::MatrixXd& W,
+    ReduceSupportConfig<double>& config,
+    Eigen::MatrixXd& T,
+    Eigen::MatrixXd& U)
+{
+    Eigen::MatrixXf Vf = V.cast<float>();
+    Eigen::MatrixXf Cf = C.cast<float>();
+    Eigen::MatrixXf Wf = W.cast<float>();
+    Eigen::MatrixXf Tf = T.cast<float>();
+    Eigen::MatrixXf Uf = U.cast<float>();
+    ReduceSupportConfig<float> configf(config);
+    float fX = reduce_support(Vf, Tet, F, Cf, BE, Wf, configf, Tf, Uf);
+    T = Tf.cast<double>();
+    U = Uf.cast<double>();
+    return (double) fX;
 }

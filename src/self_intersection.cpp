@@ -226,6 +226,8 @@ double self_intersection_3d(
     const Eigen::MatrixXd V,
     const Eigen::MatrixXi F)
 {
+    MTR_SCOPE_FUNC();
+
     Eigen::MatrixXd N;
     igl::per_face_normals(V, F, N);
 
