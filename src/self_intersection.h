@@ -16,10 +16,9 @@
 // Inputs:
 //      V   #V by 3 list of vertices
 //      F   #F by 3 list of triangle faces
-double self_intersection(
-    const Eigen::MatrixXd V,
-    const Eigen::MatrixXi F,
-    std::vector<Eigen::Vector3d> & intersection);
+double self_intersection_2d(
+    const Eigen::MatrixXf Vf,
+    const Eigen::MatrixXi F);
 
 // Return the self-intersecting volume of a 3D mesh.
 //
@@ -27,7 +26,7 @@ double self_intersection(
 //      V   #V by 3 list of vertices
 //      F   #F by 3 list of triangle faces
 double self_intersection_3d(
-    const Eigen::MatrixXd V,
+    const Eigen::MatrixXf Vf,
     const Eigen::MatrixXi F);
 
 #endif

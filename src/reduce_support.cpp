@@ -66,6 +66,14 @@ void unzip(
     Eigen::RowVector3f th;
     for (int j = 0; j < BE.rows(); ++j) {
         th = X.segment(3*j, 3);
+
+        // this stops VS2017 from complaining about mixing numeric types
+        /*Eigen::Quaternionf qf = Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *
+            Eigen::AngleAxisf(th(1), Eigen::Vector3f::UnitY()) *
+            Eigen::AngleAxisf(th(2), Eigen::Vector3f::UnitZ());
+        Eigen::Quaterniond qd = qf.cast<double>();
+        dQ.emplace_back(qd);*/
+
         dQ.emplace_back(
             Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *
             Eigen::AngleAxisf(th(1), Eigen::Vector3f::UnitY()) *
@@ -194,13 +202,13 @@ float reduce_support(
 
         if (config.is3d) {
             E_overhang = overhang_energy_3d(U, F,   config.dp, tau, unsafe);
+            E_intersect = self_intersection_3d(U, F);
         } else {
             E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, unsafe);
+            E_intersect = self_intersection_2d(U, F);
         }
         
         E_arap = arap_energy(V, T, M, config.is3d?Tet:F, L, K, config.is3d);
-        E_intersect = 0;
-
 
         iter += 1;
         float fX = (float) (
@@ -208,7 +216,6 @@ float reduce_support(
             config.c_overhang * E_overhang + 
             config.c_intersect * E_intersect
         );
-
 
         std::cout<<"["<<iter<<"] f(X): "<<fX<<
             "\t\t("<<config.c_arap*E_arap<<", "<<
@@ -304,6 +311,6 @@ float reduce_support(
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
+    
     return fX;
 }
