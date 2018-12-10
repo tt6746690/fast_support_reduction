@@ -88,7 +88,7 @@ float reduce_support(
 {
     // Setup
 
-    int m = W.cols();
+    int m = W.cols();   // number of bones
     int d = V.cols();
 
     U = V;
@@ -148,23 +148,36 @@ float reduce_support(
         X(k+1) = 0;
         X(k+2) = 0;
 
-        if (config.is3d) {
-            LB(k)   = -config.rotation_angle;
-            LB(k+1) = -config.rotation_angle;
-            LB(k+2) = -config.rotation_angle;
-            UB(k)   =  config.rotation_angle;
-            UB(k+1) =  config.rotation_angle;
-            UB(k+2) =  config.rotation_angle;
+        if (std::find(config.fixed_bones.begin(), config.fixed_bones.end(), j) != config.fixed_bones.end()) {
+            std::cout << "fixed bones at: " << j << '\n';
+            for (int i = 0; i < 3; ++i) {
+                LB(k+i) = 0;
+                UB(k+i) = 0;
+            }
         } else {
-            // 2D rotation on {x,y}-plane amounts to 
-            //      fixing rotation around {x,y}-axis, and allow rotation around z-axis
-            LB(k)   = 0;
-            LB(k+1) = 0;
-            LB(k+2) = -config.rotation_angle;
-            UB(k)   = 0;
-            UB(k+1) = 0;
-            UB(k+2) =  config.rotation_angle;
+            if (config.is3d) {
+                LB(k)   = -config.rotation_angle;
+                LB(k+1) = -config.rotation_angle;
+                LB(k+2) = -config.rotation_angle;
+                UB(k)   =  config.rotation_angle;
+                UB(k+1) =  config.rotation_angle;
+                UB(k+2) =  config.rotation_angle;
+            } else {
+                // 2D rotation on {x,y}-plane amounts to 
+                //      fixing rotation around {x,y}-axis, and allow rotation around z-axis
+                LB(k)   = 0;
+                LB(k+1) = 0;
+                LB(k+2) = -config.rotation_angle;
+                UB(k)   = 0;
+                UB(k+1) = 0;
+                UB(k+2) =  config.rotation_angle;
+            }
         }
+
+    }
+
+    for (int j = 0; j < config.fixed_bones.size(); ++j) {
+
     }
 
     
@@ -242,6 +255,7 @@ double reduce_support(
     Eigen::MatrixXf Uf = U.cast<float>();
     ReduceSupportConfig<float> configf(config);
     float fX = reduce_support(Vf, Tet, F, Cf, BE, Wf, configf, Tf, Uf);
+    config = configf;
     T = Tf.cast<double>();
     U = Uf.cast<double>();
     return (double) fX;

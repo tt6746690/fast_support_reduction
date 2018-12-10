@@ -5,6 +5,8 @@
 #include <igl/readOBJ.h>
 #include <igl/readDMAT.h>
 #include <igl/readTGF.h>
+#include <igl/writeMESH.h>
+#include <igl/writeOBJ.h>
 #include <igl/slice.h>
 #include <igl/jet.h>
 #include <igl/opengl/glfw/Viewer.h>
@@ -18,6 +20,9 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <algorithm>
+#include <numeric>
+#include <vector>
 
 using namespace std;
 using namespace Eigen;
@@ -29,14 +34,16 @@ int main(int argc, char*argv[]) {
     mtr_init("build/trace.json");
 
     std::string filename = "woody";
+    int n_fixed_bones = 0;
     int pso_iters = 1;
     int pso_population = 1;
+    Eigen::RowVector3d dp = Eigen::RowVector3d(0., 1., 0.);
     double c_arap = 1;
     double c_overhang = 1;
     double c_intersect = 1;
     double alpha_max = 0.25 * M_PI;     // 45
     double rotation_angle = M_PI / 10;
-    int rotate_model = 0; 
+    int rotate_model = 0;
     //  0 - dont rotate 
     //  1 - x 
     //  2 - y
@@ -45,25 +52,17 @@ int main(int argc, char*argv[]) {
     if (argc == 2) {
         filename = argv[1];
     }
-    if (argc == 3) {
-        pso_iters = std::stoi(argv[1]);
-        pso_population = std::stoi(argv[2]);
-    }
-    if (argc == 4) {
+    if (argc == 11) {
         filename = argv[1];
-        pso_iters = std::stoi(argv[2]);
-        pso_population = std::stoi(argv[3]);
-    }
-    if (argc == 10) {
-        filename = argv[1];
-        pso_iters = std::stoi(argv[2]);
-        pso_population = std::stoi(argv[3]);
-        alpha_max = (std::stod(argv[4]) / 180.) * M_PI;
-        rotation_angle = (std::stod(argv[5]) / 180.) * M_PI / 2;
-        c_arap = std::stod(argv[6]);
-        c_overhang = std::stod(argv[7]);
-        c_intersect = std::stod(argv[8]);
-        rotate_model = std::stoi(argv[9]);
+        n_fixed_bones = std::stoi(argv[2]);
+        pso_iters = std::stoi(argv[3]);
+        pso_population = std::stoi(argv[4]);
+        alpha_max = (std::stod(argv[5]) / 180.) * M_PI;
+        rotation_angle = (std::stod(argv[6]) / 180.) * M_PI / 2;
+        c_arap = std::stod(argv[7]);
+        c_overhang = std::stod(argv[8]);
+        c_intersect = std::stod(argv[9]);
+        rotate_model = std::stoi(argv[10]);
     }
 
     auto apply_rotation = [rotate_model](Eigen::MatrixXd& V) {
@@ -105,11 +104,27 @@ int main(int argc, char*argv[]) {
     igl::readTGF(DATA_PATH+filename+".tgf", C, BE);
     apply_rotation(C);
 
+    std::vector<int> fixed_bones;
+    if (BE.rows() != 0 && n_fixed_bones != 0) {
+        assert(n_fixed_bones <= BE.rows());
+        std::vector<double> proj_dist(BE.rows());
+        for (int i = 0; i < BE.rows(); ++i) {
+            proj_dist[i] = ((C.row(BE(i, 0)) + C.row(BE(i, 1))) / 2).dot(dp);
+        }
+
+        fixed_bones.resize(BE.rows());
+        std::iota(fixed_bones.begin(), fixed_bones.end(), 0);
+        std::partial_sort(fixed_bones.begin(), fixed_bones.begin()+n_fixed_bones, fixed_bones.end(),
+            [&proj_dist](int i, int j) { return proj_dist[i] < proj_dist[j]; });
+        fixed_bones.resize(n_fixed_bones);
+    }
+
     ReduceSupportConfig<double> config;
     config.is3d = is3d;
     config.alpha_max = alpha_max;
-    config.dp = Eigen::RowVector3d(0., 1., 0.);
+    config.dp = dp;
     config.rotation_angle = rotation_angle;
+    config.fixed_bones = fixed_bones;
     config.pso_iters = pso_iters;
     config.pso_population = pso_population;
     config.c_arap = c_arap;
@@ -134,7 +149,7 @@ int main(int argc, char*argv[]) {
             igl::jet(W.col(selected).eval(),true,CC);
             viewer.data().set_colors(CC);
         };
-    const auto draw_coordsys = [&](igl::opengl::glfw::Viewer &viewer, Eigen::MatrixXd V) {
+    const auto draw_coordsys = [&](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& V) {
         // coordinates 
         Eigen::Vector3d min = V.colwise().minCoeff();
         Eigen::Vector3d max = V.colwise().maxCoeff();
@@ -151,10 +166,17 @@ int main(int argc, char*argv[]) {
             viewer.data().add_edges(VCoord.row(0), VCoord.row(i), green);
         }
     };
-
-    set_color(viewer);
+    const auto draw_fixed_bones = [&](igl::opengl::glfw::Viewer &viewer, std::vector<int>& fixed_bones) {
+        for (int i = 0; i < fixed_bones.size(); ++i) {
+            auto edge = BE.row(fixed_bones[i]);
+            viewer.data().add_edges(C.row(edge(0)), C.row(edge(1)), blue);
+        }
+    };
     viewer.data().set_mesh(U, F);
+    viewer.data().add_points(C, sea_green);
+    viewer.data().set_edges(C, BE, sea_green);
     draw_coordsys(viewer, U);
+    draw_fixed_bones(viewer, fixed_bones);
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 20;
@@ -162,31 +184,50 @@ int main(int argc, char*argv[]) {
         [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
             switch(key) {
                 case '.':
+                    set_color(viewer);
                     selected++;
                     selected = std::min(std::max(selected,0),(int)W.cols()-1);
-                    set_color(viewer);
                     break;
                 case ',':
+                    set_color(viewer);
                     selected--;
                     selected = std::min(std::max(selected,0),(int)W.cols()-1);
-                    set_color(viewer);
                     break;
                 case ' ':
                     reduce_support(V, Tet, F, C, BE, W, config, T, U);
                     V = U;
-                    viewer.data().set_mesh(U, F);
 
+                    // clear all ViewerData
+                    viewer.selected_data_index = viewer.data_list.size()-1;
+                    while(viewer.erase_mesh(viewer.selected_data_index)){};
+                    viewer.data().clear();
+
+                    // reset mesh 
+                    viewer.data().set_mesh(U, F);
+                    draw_coordsys(viewer, U);
+                    draw_fixed_bones(viewer, fixed_bones);
+
+                    // deformed bones
                     Eigen::MatrixXd CT;
                     Eigen::MatrixXi BET;
                     igl::deform_skeleton(C, BE, T, CT, BET);
                     viewer.data().add_points(CT, sea_green);
-                    viewer.data().set_edges(CT, BET, sea_green);
+                    for (int i = 0; i < BET.rows(); ++i) {
+                        viewer.data().add_edges(CT.row(BET(i, 0)), CT.row(BET(i, 1)), sea_green);
+                    }
 
-                    draw_coordsys(viewer, U);
-                    // risky faces (overhang)
-                    Eigen::MatrixXd RiskyColors(config.unsafe.rows(), 3);
-                    RiskyColors.rowwise() = red;
-                    viewer.data().set_edges(U, config.unsafe, RiskyColors);
+                    // risky overhangs on deformed mesh
+                    std::cout << "size: " << config.unsafe.rows();
+                    for (int i = 0; i < config.unsafe.rows(); ++i) {
+                        viewer.data().add_edges(U.row(config.unsafe(i, 0)), U.row(config.unsafe(i, 1)), red);
+                    }
+
+                    if (config.is3d) {
+                        igl::writeMESH(DATA_PATH+filename+"_deformed.mesh", U, Tet, F);
+                    } else {
+                        igl::writeOBJ(DATA_PATH+filename+"_deformed.obj", U, F);
+                    }
+                    break;              
             }
             return true;
         };

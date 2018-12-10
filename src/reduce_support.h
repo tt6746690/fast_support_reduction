@@ -7,10 +7,13 @@
 template <typename T>
 class ReduceSupportConfig{
 public:
+
+    // Default ctor
     ReduceSupportConfig()
         :   is3d(true),
             alpha_max(0.25*M_PI), 
             dp(0.,1.,0.),
+            fixed_bones(),
             rotation_angle(0.25*M_PI),
             pso_iters(1),
             pso_population(1),
@@ -21,20 +24,34 @@ public:
             display(false)
         {}
 
-    // ctor conversion
+    // Conversions
+
     template <typename U>
     ReduceSupportConfig(const ReduceSupportConfig<U>& that) {
-        this->is3d = that.is3d;
-        this->alpha_max = (T) that.alpha_max;
-        this->dp = that.dp.template cast<T>();
-        this->rotation_angle = (T) that.rotation_angle;
-        this->pso_iters = that.pso_iters;
-        this->pso_population = that.pso_population;
-        this->c_arap = (T) that.c_arap;
-        this->c_overhang = (T) that.c_overhang;
-        this->c_intersect = (T) that.c_intersect;
-        this->display = that.display;
-        this->unsafe = that.unsafe;
+        cast(that, *this);
+    }
+    template <typename U>
+    ReduceSupportConfig<T>& operator=(const ReduceSupportConfig<U>& that) {
+        cast(that, *this);
+        return *this;
+    }
+
+private:
+
+    template <typename U>
+    void cast(const ReduceSupportConfig<U>& from, ReduceSupportConfig<T>& to) {
+        to.is3d           =     from.is3d;
+        to.alpha_max      = (T) from.alpha_max;
+        to.dp             =     from.dp.template cast<T>();
+        to.fixed_bones    =     from.fixed_bones;
+        to.rotation_angle = (T) from.rotation_angle;
+        to.pso_iters      =     from.pso_iters;
+        to.pso_population =     from.pso_population;
+        to.c_arap         = (T) from.c_arap;
+        to.c_overhang     = (T) from.c_overhang;
+        to.c_intersect    = (T) from.c_intersect;
+        to.display        =     from.display;
+        to.unsafe         =     from.unsafe;   
     }
 
 public:
@@ -47,6 +64,9 @@ public:
     //  normalized printing direction
     Eigen::Matrix<T, 3, 1> dp;
 
+    // bones that are fixed, for "sticking" the feet to the printing platform
+    //      i.e. rows of `BE` from .tgf format
+    std::vector<int> fixed_bones;
     //  maximum range of rotation for each bone
     T rotation_angle;
     //  number of iterations for `pso`
@@ -59,7 +79,7 @@ public:
     T c_overhang;
     T c_intersect;
 
-    // saved values for visualization
+    // #risky x 2       risky edges recorded during overhang energy
     Eigen::MatrixXi unsafe;
 
     bool display;
