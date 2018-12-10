@@ -24,19 +24,17 @@ build/support_reduction hand 10 1 20 0.0001 1 1
 
 
 ```
-build/support_reduction hand 1 1 1 45 20 100 20000 10 0
-build/support_reduction hand 1 10 10 45 20 100 20000 10 0
-# fX: 13.6429
-# ok, but not perfect
+build/support_reduction bb-bunny 10 20 20 45 45 100 0.4 1 0
+```
 
-build/support_reduction hand 1 20 20 45 20 100 20000 10 0
-# final fX: 9.06522
-# visualy worse than previous
-
-build/support_reduction hand 1 40 50 45 20 100 20000 10 0
-final fX: 13.6429
+```
+build/support_reduction hand 1 1 1 50 45 2 0.1 1 0
+```
 
 
 
-build/support_reduction bb-bunny 4 1 1 45 20 100 20000 100 0
+```
+# look_moon
+build/support_reduction bb-bunny 10 100 20 45 60 0 0.4 0 0
+
 ```

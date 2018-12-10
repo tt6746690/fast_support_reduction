@@ -16,8 +16,8 @@ cmake .. -DWITH_DEBUG=OFF
 # visualize correctness of energy computation
 cmake .. -DWITH_VISUALIZE=ON
 cmake .. -DWITH_VISUALIZE=ON -DWITH_DEBUG=ON
+cmake .. -DWITH_VISUALIZE=ON -DWITH_DEBUG=OFF
 
-make
 
 # debugging
 lldb build/support_reduction

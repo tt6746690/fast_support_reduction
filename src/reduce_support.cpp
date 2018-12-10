@@ -149,7 +149,6 @@ float reduce_support(
         X(k+2) = 0;
 
         if (std::find(config.fixed_bones.begin(), config.fixed_bones.end(), j) != config.fixed_bones.end()) {
-            std::cout << "fixed bones at: " << j << '\n';
             for (int i = 0; i < 3; ++i) {
                 LB(k+i) = 0;
                 UB(k+i) = 0;
@@ -175,11 +174,6 @@ float reduce_support(
         }
 
     }
-
-    for (int j = 0; j < config.fixed_bones.size(); ++j) {
-
-    }
-
     
     // Energy function
 
@@ -200,7 +194,7 @@ float reduce_support(
         double E_arap, E_overhang, E_intersect;
 
         if (config.is3d) {
-            E_overhang = overhang_energy_3d(U, F,   config.dp, tau, config.unsafe);
+            E_overhang = overhang_energy_3d(U, F,   config.dp, tau);
             E_intersect = self_intersection_3d(U, F);
         } else {
             E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, config.unsafe);
@@ -230,6 +224,7 @@ float reduce_support(
     std::cout << "final fX: " << fX << '\n';
     unzip(X, Cd, BE, P, T);
     U = M * T;
+    overhang_energy_risky(U, F, config.dp, tau, config.unsafe);
 
     return fX;
 }

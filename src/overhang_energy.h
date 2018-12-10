@@ -116,12 +116,11 @@ double overhang_energy_3d(
     const Eigen::MatrixBase<DerivedV>& V,
     const Eigen::MatrixBase<DerivedF>& F,
     const Eigen::RowVector3f& dp,
-    double tau,
-    Eigen::MatrixXi& unsafe)
+    double tau)
 {
     MTR_SCOPE_FUNC();
     typedef typename DerivedV::Scalar ScalarV;
-    typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, 1> VectorXVT;
+    // typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, 1> VectorXVT;
     typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, Eigen::Dynamic> MatrixXVT;
 
     double negtau = -tau;
@@ -131,49 +130,80 @@ double overhang_energy_3d(
     MatrixXVT N;
     igl::per_face_normals(V, F, N);
 
-    VectorXVT A;
-    igl::doublearea(V, F, A);
+    // VectorXVT A;
+    // igl::doublearea(V, F, A);
 
-    MatrixXVT C(F.rows(), V.cols());
-    VectorXVT h(F.rows());
-    per_face_centroid(V, F, C);
-    for (int i = 0; i < C.rows(); ++i) {
-        h(i) = C.row(i).dot(dp);
+    // height of rectangular prism, by projecting centroid of triangle to printing direction
+    // VectorXVT h(F.rows());
+    // for (int i = 0; i < F.rows(); ++i) {
+    //     h(i) = (V.row(F(i, 0)) + V.row(F(i, 1)) + V.row(F(i, 2))).dot(dp);
+    // }
+
+    for (int i = 0; i < N.rows(); ++i) {
+        e = N.row(i).dot(dp) + tau;
+        e = std::pow(std::min(e, 0.), 2.0);
+        energy += e;
+        
+        // e = N.row(i).dot(dp);
+        // if (e < negtau) {
+        //     e = A(i) * e * h(i);
+        //     energy += e;
+        // }
     }
 
-#ifdef VISUALIZE
+    return std::abs(energy);
+}
+
+
+
+// Find risky edges for 3d printing
+// 
+// Inputs:
+//      V,  #V by dim
+//      F,  #F by dim   surface meshes
+//      dp,             printing direction (normalized)
+//      tau,            self-supporting coefficient, τ = sin(α_max)
+// Outputs:
+//      unsafe, _ by 2  unsafe edges for both {2, 3} dimension, i.e. indices into F
+//      overhang energy E(V)
+template <
+    typename DerivedV,
+    typename DerivedF,
+    typename DerivedDP>
+void overhang_energy_risky(
+    const Eigen::MatrixBase<DerivedV>& V,
+    const Eigen::MatrixBase<DerivedF>& F,
+    const Eigen::MatrixBase<DerivedDP>& dp,
+    double tau,
+    Eigen::MatrixXi& unsafe)
+{
+    typedef typename DerivedV::Scalar ScalarV;
+    typedef Eigen::Matrix<ScalarV, 3, 1> RowVector3VT;
+    typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, Eigen::Dynamic> MatrixXVT;
+
+    RowVector3VT dpt = dp.template cast<ScalarV>();
+
+    MatrixXVT N;
+    igl::per_face_normals(V, F, N);
+
+    double e;
     int k = 0;  // number of unsafe edges
     Eigen::RowVector3i t;
     unsafe = Eigen::MatrixXi::Zero(F.rows()*3, 2);
-#endif
 
     for (int i = 0; i < N.rows(); ++i) {
-        e = N.row(i).dot(dp);
-
-#ifdef VISUALIZE
-        if (e < negtau) {
-            // std::cout << "theta (degrees): " << ( (1. - std::acos(N.row(i).normalized().dot(dp)) / M_PI) * 180) << ";  tau: " << tau << '\n';
+        e = N.row(i).dot(dpt) + tau;
+        if (e < 0) {
             t = F.row(i);
             unsafe.row(k)   << t(0), t(1);
             unsafe.row(k+1) << t(1), t(2);
             unsafe.row(k+2) << t(2), t(0);
             k += 3;
         }
-#endif
-
-        if (e < negtau) {
-            // std::cout << "A: " << A(i) << "* cos(theta) " << e << " h " << h(i)  << " total " << A(i) * e * h(i)<< '\n';
-            e = A(i) * e * h(i);
-            energy += e;
-        }
     }
-
-#ifdef VISUALIZE
     unsafe.conservativeResize(k, unsafe.cols());
-#endif
-
-    return std::abs(energy);
 }
+
 
 
 #endif

@@ -15,6 +15,7 @@
 
 #include "src/defs.h"
 #include "src/reduce_support.h"
+#include "src/overhang_energy.h"
 #include "src/minitrace.h"
 
 #include <cstdio>
@@ -23,6 +24,7 @@
 #include <algorithm>
 #include <numeric>
 #include <vector>
+#include <cmath>
 
 using namespace std;
 using namespace Eigen;
@@ -173,26 +175,33 @@ int main(int argc, char*argv[]) {
             viewer.data().add_edges(VCoord.row(0), VCoord.row(i), green);
         }
     };
-    const auto draw_fixed_bones = [&](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, std::vector<int>& fixed_bones) {
+    const auto draw_fixed_bones = [&red](
+        igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE, std::vector<int>& fixed_bones) {
         for (int i = 0; i < fixed_bones.size(); ++i) {
             auto edge = BE.row(fixed_bones[i]);
             viewer.data().add_edges(C.row(edge(0)), C.row(edge(1)), red);
         }
     };
-    const auto draw_bones = [&](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE) {
+    const auto draw_bones = [&sea_green](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE) {
         viewer.data().add_points(C, sea_green);
         for (int i = 0; i < BE.rows(); ++i) {
             viewer.data().add_edges(C.row(BE(i, 0)), C.row(BE(i, 1)), sea_green);
         }
-        for (int i = 0; i < C.rows(); ++i) {
-            viewer.data().add_label(C.row(i), std::to_string(i));
+    };
+    const auto draw_risky = [&config, &red](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& V) {
+        for (int i = 0; i < config.unsafe.rows(); ++i) {
+            viewer.data().add_edges(V.row(config.unsafe(i, 0)), V.row(config.unsafe(i, 1)), red);
         }
     };
 
     viewer.data().set_mesh(U, F);
     draw_bones(viewer, C, BE);
     draw_coordsys(viewer, U);
-    draw_fixed_bones(viewer, C, fixed_bones);
+    draw_fixed_bones(viewer, C, BE, fixed_bones);
+    if (config.is3d) {
+        overhang_energy_risky(U, F, config.dp, std::cos(config.alpha_max), config.unsafe);
+        draw_risky(viewer, U);
+    }
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 20;
@@ -226,13 +235,10 @@ int main(int argc, char*argv[]) {
                     Eigen::MatrixXd CT;
                     Eigen::MatrixXi BET;
                     igl::deform_skeleton(C, BE, T, CT, BET);
+                    draw_fixed_bones(viewer, CT, BET, fixed_bones);
                     draw_bones(viewer, CT, BET);
-                    draw_fixed_bones(viewer, CT, fixed_bones);
 
-                    // risky overhangs on deformed mesh
-                    for (int i = 0; i < config.unsafe.rows(); ++i) {
-                        viewer.data().add_edges(U.row(config.unsafe(i, 0)), U.row(config.unsafe(i, 1)), red);
-                    }
+                    draw_risky(viewer, U);
 
                     std::string outf = DATA_PATH+filename+"_deformed_" + std::to_string(pso_iters);
                     if (config.is3d) {
