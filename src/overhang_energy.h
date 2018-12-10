@@ -120,7 +120,7 @@ double overhang_energy_3d(
 {
     MTR_SCOPE_FUNC();
     typedef typename DerivedV::Scalar ScalarV;
-    // typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, 1> VectorXVT;
+    typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, 1> VectorXVT;
     typedef Eigen::Matrix<ScalarV, Eigen::Dynamic, Eigen::Dynamic> MatrixXVT;
 
     double negtau = -tau;
@@ -130,25 +130,22 @@ double overhang_energy_3d(
     MatrixXVT N;
     igl::per_face_normals(V, F, N);
 
-    // VectorXVT A;
-    // igl::doublearea(V, F, A);
+    VectorXVT A;
+    igl::doublearea(V, F, A);
 
-    // height of rectangular prism, by projecting centroid of triangle to printing direction
-    // VectorXVT h(F.rows());
-    // for (int i = 0; i < F.rows(); ++i) {
-    //     h(i) = (V.row(F(i, 0)) + V.row(F(i, 1)) + V.row(F(i, 2))).dot(dp);
-    // }
+    // height of rectangular prism, by projecting 
+    //      centroid of triangle to printing direction
+    VectorXVT h(F.rows());
+    for (int i = 0; i < F.rows(); ++i) {
+        h(i) = (V.row(F(i, 0)) + V.row(F(i, 1)) + V.row(F(i, 2))).dot(dp);
+    }
 
     for (int i = 0; i < N.rows(); ++i) {
-        e = N.row(i).dot(dp) + tau;
-        e = std::pow(std::min(e, 0.), 2.0);
-        energy += e;
-        
-        // e = N.row(i).dot(dp);
-        // if (e < negtau) {
-        //     e = A(i) * e * h(i);
-        //     energy += e;
-        // }
+        e = N.row(i).dot(dp);
+        if (e < negtau) {
+            e = A(i) * e * h(i);
+            energy += e;
+        }
     }
 
     return std::abs(energy);
