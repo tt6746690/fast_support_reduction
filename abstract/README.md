@@ -35,3 +35,10 @@ build/support_reduction bb-bunny 5 50 50 45 90 20 30 1 0
 # farsee
 build/support_reduction bb-bunny 5 120 200 50 90 20 40 0.5 0
 ```
+
+
+### presentation 
+
++ overhang energy not printer specific but can be twisted to an advantage, in that we can use it to account for 
+    + physics based material strength to support itself
+    + make it balance i.e. center of mass

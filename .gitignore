@@ -39,3 +39,6 @@ build/*
 *.log
 *.out
 *.synctex.gz
+*.bcf
+*.blg
+*.run.xml
