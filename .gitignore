@@ -41,4 +41,5 @@ build/*
 *.synctex.gz
 *.bcf
 *.blg
+*.bbl
 *.run.xml

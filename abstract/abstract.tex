@@ -32,22 +32,22 @@
 \DeclareMathOperator*{\argmin}{arg\,min} % Jan Hlavacek
 
 \setcopyright{rightsretained}
-
+ 
 \begin{document}
-\title{3D printing support reduction via skinning deformation}
+\title{3D Printing Support Reduction via Skinning Deformation}
 \subtitle{Extended Abstract}
 
 \author{Julia Gilenko}
 \affiliation{%
   \institution{University of Toronto}
-}
+} 
 \email{julia@mail.utoronto.com}
-
+ 
 \author{Peiqi Wang}
 \affiliation{%
   \institution{University of Toronto}
 }
-\email{wangpeiq@mail.utoronto.com}
+\email{pq.wang@mail.utoronto.com}
 
 \author{Eris Zhang}
 \affiliation{%
@@ -60,9 +60,8 @@
  
 
 \begin{abstract}
-This paper provides a sample of a \LaTeX\ document which conforms,
-somewhat loosely, to the formatting guidelines for
-ACM SIG Proceedings. \footnote{Code is available in a github \href{https://github.com/tt6746690/fast_support_reduction/}{repo}}
+ 
+In layer-based 3D fabrication, supporting materials are fabricated to support overhanging regions and are discarded later; reducing supports save time and material cost. We introduce a deformation-based method that minimizes supporting structures. The method searches globally in the space of linear blending transformations on skeleton handles, minimizing distortion, overhang, and self-intersection. Our method produces natural deformations requiring minimal supporting structures while avoiding artifacts such as self-intersection. Our method can be generalized to include arbitrary constraint by incorporating additional objectives, such as accounting for center of mass for balancing and physical property of the printing material for self-support. \footnote{Code is available at https://github.com/tt6746690/fast\_support\_reduction}
 \end{abstract}
 
 %
@@ -82,7 +81,7 @@ ACM SIG Proceedings. \footnote{Code is available in a github \href{https://githu
 
 \ccsdesc[300]{Computing methodologies~Mesh geometry models}
 
-\keywords{3D printing, deformation, geometry processing}
+\keywords{geometry processing, shape deformation, 3D fabrication}
 
 \maketitle
 

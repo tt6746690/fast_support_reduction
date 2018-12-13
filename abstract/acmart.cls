@@ -1138,12 +1138,9 @@ Computing Machinery]
   \ifx\acmConference@shortname\@empty
     \gdef\acmConference@shortname{#2}%
   \fi}
-\acmConference[Conference'17]{ACM Conference}{July 2017}{Washington,
-  DC, USA}
+\acmConference[Fianl Project]{}{December 2018}{Toronto, ON, CA}
 \def\acmBooktitle#1{\gdef\@acmBooktitle{#1}}
-\acmBooktitle{Proceedings of \acmConference@name
-       \ifx\acmConference@name\acmConference@shortname\else
-         \ (\acmConference@shortname)\fi}
+\acmBooktitle{\acmConference@shortname}
 \def\@editorsAbbrev{(Ed.)}
 \def\@acmEditors{}
 \def\editor#1{\ifx\@acmEditors\@empty
@@ -1519,13 +1516,13 @@ Computing Machinery]
    and\hspace*{.5pt}/or  a fee. Request permissions from
    permissions@acm.org.
   \or % rightsretained
-   Permission to make digital or hard copies of part or all of this work
-   for personal or classroom use is granted without fee provided that
-   copies are not made or distributed for profit or commercial advantage
-   and that copies bear this notice and the full citation on the first
-   page. Copyrights for third-party components of this work must be
-   honored. For all other uses, contact the
-   owner\hspace*{.5pt}/author(s).
+  %  Permission to make digital or hard copies of part or all of this work
+  %  for personal or classroom use is granted without fee provided that
+  %  copies are not made or distributed for profit or commercial advantage
+  %  and that copies bear this notice and the full citation on the first
+  %  page. Copyrights for third-party components of this work must be
+  %  honored. For all other uses, contact the
+  %  owner\hspace*{.5pt}/author(s).
   \or % usgov
    This paper is authored by an employee(s) of the United States
    Government and is in the public domain. Non-exclusive copying or
@@ -2206,39 +2203,43 @@ Computing Machinery]
     \fi
    \ignorespaces\@abstract\par}%
   \fi\egroup}
-\def\@mkbibcitation{\bgroup
-  \def\@pages@word{pages}%
-  \def\footnotemark{}%
-  \def\\{\unskip{} \ignorespaces}%
-  \def\footnote{\ClassError{\@classname}{Please do not use footnotes
-      inside a \string\title{} or \string\author{} command! Use
-      \string\titlenote{} or \string\authornote{} instead!}}%
-  \def\@article@string{\ifx\@acmArticle\@empty{\ }\else,
-    Article~\@acmArticle\ \fi}%
-  \par\medskip\small\noindent{\bfseries ACM Reference Format:}\par\nobreak
-  \noindent\bgroup
-    \def\\{\unskip{}, \ignorespaces}\authors\egroup. \@acmYear. \@title
-  \ifx\@subtitle\@empty. \else: \@subtitle. \fi
-  \if@ACM@nonacm\else
-    % The 'nonacm' option disables 'printacmref' by default,
-    % and the present \@mkbibcitation definition is never used
-    % in this case. The conditional remains useful if the user
-    % explicitly sets \settopmatter{printacmref=true}.
-    \if@ACM@journal
-       \textit{\@journalNameShort}
-       \@acmVolume, \@acmNumber \@article@string (\@acmPubDate),
-       ~\@pages@word.
-    \else
-       In \textit{\@acmBooktitle}%
-       \ifx\@acmEditors\@empty\textit{.}\else
-         \andify\@acmEditors\textit{, }\@acmEditors~\@editorsAbbrev.%
-       \fi\
-       ACM, New York, NY, USA%
-         \@article@string\unskip, ~\@pages@word.
-    \fi
-  \fi
-  \ifx\@acmDOI\@empty\else\@formatdoi{\@acmDOI}\fi
-\par\egroup}
+\def\@mkbibcitation{
+  
+% \bgroup
+%   \def\@pages@word{pages}%
+%   \def\footnotemark{}%
+%   \def\\{\unskip{} \ignorespaces}%
+%   \def\footnote{\ClassError{\@classname}{Please do not use footnotes
+%       inside a \string\title{} or \string\author{} command! Use
+%       \string\titlenote{} or \string\authornote{} instead!}}%
+%   \def\@article@string{\ifx\@acmArticle\@empty{\ }\else,
+%     Article~\@acmArticle\ \fi}%
+%   \par\medskip\small\noindent{\bfseries ACM Reference Format:}\par\nobreak
+%   \noindent\bgroup
+%     \def\\{\unskip{}, \ignorespaces}\authors\egroup. \@acmYear. \@title
+%   \ifx\@subtitle\@empty. \else: \@subtitle. \fi
+%   \if@ACM@nonacm\else
+%     % The 'nonacm' option disables 'printacmref' by default,
+%     % and the present \@mkbibcitation definition is never used
+%     % in this case. The conditional remains useful if the user
+%     % explicitly sets \settopmatter{printacmref=true}.
+%     \if@ACM@journal
+%        \textit{\@journalNameShort}
+%        \@acmVolume, \@acmNumber \@article@string (\@acmPubDate),
+%        ~\@pages@word.
+%     \else
+%        In \textit{\@acmBooktitle}%
+%        \ifx\@acmEditors\@empty\textit{.}\else
+%          \andify\@acmEditors\textit{, }\@acmEditors~\@editorsAbbrev.%
+%        \fi\
+%        ACM, New York, NY, USA%
+%          \@article@string\unskip, ~\@pages@word.
+%     \fi
+%   \fi
+%   \ifx\@acmDOI\@empty\else\@formatdoi{\@acmDOI}\fi
+% \par\egroup
+
+}
 \def\@printendtopmatter{\par\bigskip}
 \def\@setthanks{\long\def\thanks##1{\par##1\@addpunct.}\thankses}
 \def\@setauthorsaddresses{\@authorsaddresses\unskip\@addpunct.}
