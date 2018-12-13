@@ -85,7 +85,6 @@ int main(int argc, char*argv[]) {
 
     bool is3d = (filename.find("woody") == 0 || filename.find("thin") == 0) ? 
         false : true;
-    is3d
 
     Eigen::MatrixXd V, U;
     Eigen::MatrixXi Tet, F;   // Tet=tetrahedron mesh
@@ -197,7 +196,7 @@ int main(int argc, char*argv[]) {
 
     viewer.data().set_mesh(U, F);
     draw_bones(viewer, C, BE);
-    // draw_coordsys(viewer, U);
+    draw_coordsys(viewer, U);
     draw_fixed_bones(viewer, C, BE, fixed_bones);
     if (config.is3d) {
         overhang_energy_risky(U, F, config.dp, std::cos(config.alpha_max), config.unsafe);
@@ -230,7 +229,7 @@ int main(int argc, char*argv[]) {
 
                     // reset mesh 
                     viewer.data().set_mesh(U, F);
-                    // draw_coordsys(viewer, U);
+                    draw_coordsys(viewer, U);
 
                     // deformed bones
                     Eigen::MatrixXd CT;
