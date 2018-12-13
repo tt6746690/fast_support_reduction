@@ -1138,7 +1138,7 @@ Computing Machinery]
   \ifx\acmConference@shortname\@empty
     \gdef\acmConference@shortname{#2}%
   \fi}
-\acmConference[Fianl Project]{}{December 2018}{Toronto, ON, CA}
+\acmConference[Final Project]{}{December 2018}{Toronto, ON, CA}
 \def\acmBooktitle#1{\gdef\@acmBooktitle{#1}}
 \acmBooktitle{\acmConference@shortname}
 \def\@editorsAbbrev{(Ed.)}
