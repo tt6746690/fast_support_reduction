@@ -30,6 +30,8 @@
 \newcommand{\bb}{\mathbf{b}} 
  
 \DeclareMathOperator*{\argmin}{arg\,min} % Jan Hlavacek
+\graphicspath{ {./assets/} }
+
 
 \setcopyright{rightsretained}
  
@@ -42,7 +44,7 @@
   \institution{University of Toronto}
 } 
 \email{julia@mail.utoronto.com}
- 
+
 \author{Peiqi Wang}
 \affiliation{%
   \institution{University of Toronto}
@@ -57,7 +59,6 @@
 
 % The default list of authors is too long for headers.
 \renewcommand{\shortauthors}{Julia G. Mark W. Eris Z.}
- 
 
 \begin{abstract}
  
@@ -83,9 +84,26 @@ In layer-based 3D fabrication, supporting materials are fabricated to support ov
 
 \keywords{geometry processing, shape deformation, 3D fabrication}
 
+\begin{teaserfigure}
+    \centering
+    \includegraphics[width=0.13\textwidth]{bb_bunny.png} 
+    \includegraphics[width=0.13\textwidth]{bb_bunny_igl.png} 
+    \includegraphics[width=0.13\textwidth]{bb_bunny_3dp.png}
+    \quad
+    {\LARGE$\rightarrow$}
+    \quad
+    \includegraphics[width=0.13\textwidth]{bb_bunny_deformed.png} 
+    \includegraphics[width=0.13\textwidth]{bb_bunny_deformed_igl.png} 
+    \includegraphics[width=0.13\textwidth]{bb_bunny_deformed_3dp.png}
+    \caption{Our method generates natural skinning deformation with reduced support structures}
+    \label{fig:bb_bunny}
+\end{teaserfigure}
+
 \maketitle
 
+
 \input{body}
+\newpage
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}

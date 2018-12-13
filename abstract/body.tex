@@ -9,9 +9,9 @@ Linear blend skinning is a fast deformation method. Recent work shown impressive
 
 This abstract presents a method for finding natural deformations with reduced support structures. We pose the problem of support reduction as a global optimization problem over the space of linear blend skinning deformations minimizing several objectives, namely
 \begin{enumerate}
-    \item a local-rigidity measure.~\cite{sorkine_arap_2007}
-    \item the volume of support materials.
-    \item artifacts, such as self-intersection.
+    \item local distortion ~\cite{sorkine_arap_2007}
+    \item support structures
+    \item self-intersection
 \end{enumerate}
 We implemented a prototype and fabricated some model for visualization.
 
@@ -88,7 +88,7 @@ where $\bn_f$ is unit normal of face $f$ and $\bd_{p}$ is the printing direction
 \[
     \lambda(f) = 
     \begin{cases}
-        A_{base} h = A_f |\bn_f \cdot \bd_{p}| (\bc_f \cdot \bd_{p}) & \text{if } \bn(f) \cdot \bd_{p} < -\tau \\
+        A_{base} h = A_f |\bn_f \cdot \bd_{p}| (\bc_f \cdot \bd_{p}) & \text{if } \bn_f \cdot \bd_{p} < -\tau \\
         0 & otherwise \\
     \end{cases}
 \]
@@ -99,9 +99,9 @@ where $A_f$ is the area of the face, $\bc_f$ is the centroid of the face. We def
 
 \subsubsection*{Self-intersection Energy}
 
-One dominant artifact in skinning deformation is self-intersection, which renders the shape not 3D printable. We call a subset of mesh $\calM$ bordered by intersecting tetrahedra the \textit{self-intersecting region}. To quantify the total volume $V_i$ of each self-intersecting region, we define a $k\times k$ grid below the mesh and trace rays up in direction of the printing direction from every grid point. A ray is inside a self-intersecting region if $\bd_{p} \cdot \bn_f < 0$ for 2 consecutively incident faces. Summation of distances that rays traversed inside a self-intersecting region approximates the volume. We can define a self-intersection energy $E_{intersect}: \R^{n\times d} \to \R$ which measures the total volume of the self-intersecting regions as follows,
+One dominant artifact in skinning deformation is self-intersection, which renders the shape not 3D printable. We call a subset of mesh $\calM$ bordered by intersecting tetrahedra the \textit{self-intersecting region}. To quantify the total volume $V_i$ of each self-intersecting region, we define a $k\times k$ grid below the mesh and trace rays up in direction of the printing direction from every grid point. A ray is inside a self-intersecting region if $\bd_{p} \cdot \bn_f < 0$ for 2 consecutively incident faces. Summation of distances $d_j$ that $j$-th ray traversed inside a self-intersecting region approximates the volume. We can define a self-intersection energy $E_{intersect}: \R^{n\times d} \to \R$ which measures the total volume of the self-intersecting regions as follows,
 \[
-    E_{intersect}(\bV') = \sum_i V_i 
+    E_{intersect}(\bV') = \sum_i V_i = \sum_{j=1}^{k\times k} d_j
 \]
 
 % traversed inside each region 
@@ -119,14 +119,36 @@ One dominant artifact in skinning deformation is self-intersection, which render
 % where $V_i$ is the volume of the $i^{\text{th}}$ region. To find these volumes, we define a grid below the mesh and trace a ray up from every grid point. If it enters the mesh twice in a row, we know the ray must be in a self-intersecting region. "Entering" simply means the direction of the ray is opposite to the vertical component of the normal direction of the surface at that point. When it exits this region, we record the distance the ray traversed inside it. The sum of all these lengths produces an approximation of the combined volume. The finer the grid, the more accurate the approximation.
 
 
-\subsection*{Optimization}
+\subsubsection*{Optimization}
 
-We define an objective function $E(\bx): \R^n \rightarrow \R$ as the sum of the three energy terms $E = E_{arap} + E_{overhang} + E_{intersect}$
-and minimize $E$ using the particle swarm optimization. Let $\bx \in \R^{2dm}$ consisting a representation of centroid and rotation (as Euler's angle) about the centroid of for each edge handle. For shape in 
+We perform global optimization over the space of linear blend skinning transformations using particle swarm optimization, as noted in \cite{jacobson_matryoshka_2017}. We define a single objective function $E: \R^{3m} \to \R$ as a weighted sum of 3 energy functions,
+\[
+    E(\bx) = \omega_1 E_{arap}(\bV') + \omega_2 E_{overhang}(\bV') + \omega_3 E_{intersect}(\bV')
+\]
+where $\bx = \{ \phi_j, \theta_j, \psi_j \}_{j=1}^m$ are euler's angles describing the local rotation for each handle $h_j \in \calH$. We use forward kinematics to propagate local rotations $\bx$ in order to compute the transformation matrix $\bT$. We apply linear blend skinning formula $\bV' = \bM \bT$ to determine vertex positions for the deformed mesh, from which we can determine the value for as-rigid-as-possible, overhang, and self-intersection energy. $\omega_1,\omega_2,\omega_3$ are hyperparameters used to adjust relative weight of different objectives and are chosen a posteriori.
 
-Finally, we can convert each component to $\bT_j$, affine transformations for edge handles, from which can compute deformed shaped $\bV' = \bM \bT$ with LBS.
+\subsection*{Experiments \& Results}
 
-\subsection*{Results?}
+We use the same default settings for particle swarm optimization as specified in \cite{jacobson_matryoshka_2017} with 200 random initial particles and 120 iterations for both Figure.~\ref{fig:bb_bunny} and Figure.~\ref{fig:bunny}. By observing the viewer and fabricated model, we observe a reduction in the number of \textit{risky} faces as well as support materials used. The generated deformation are natural and has some but negligible self-intersection.
 
-\subsection*{Future work}
-In future work, we would like to speed up the calculations with a GPU. This would reduce wait time for the user and introduce the possibility of user interactivity, so that a user could have some control over the model's final position. We would also like to have the optimizer consider how the deformation shifts the model's center of mass, so that the model would still be able to stand on its own once it has been printed.
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.13\textwidth]{bunny.png}
+    \includegraphics[width=0.13\textwidth]{bunny_igl.png} 
+    \includegraphics[width=0.13\textwidth]{bunny_3dp.png}
+    \\
+    \includegraphics[width=0.13\textwidth]{bunny_deformed.png} 
+    \includegraphics[width=0.13\textwidth]{bunny_deformed_igl.png} 
+    \includegraphics[width=0.13\textwidth]{bunny_deformed_3dp.png}
+    \caption{Our method reduces support material usage by 37\% on the bunny}
+    \label{fig:bunny}
+\end{figure}
+
+
+\subsection*{Limitations and Future Work}
+
+Hyperparameters $\omega_1, \omega_2, \omega_3$ are tuned manually by experimentation and there is no clear way to pick sensible values because the objectives are tradeoffs and often act in conflict with each other. For example, overhang free deformation may introduce a large amount of distortions. In future work, we would like to investigate more on multi-objective optimization.
+
+Currently, An entire run of the optimization procedure took several minutes for Figure.~\ref{fig:bb_bunny} and Figure.~\ref{fig:bunny}. There are huge potential in moving linear blend skinning and energy computation to vertex shaders for fast and parallel computation. In future work, we want to re-implement bottleneck steps using OpenGL for real time computation to allow for interactive design.
+
+Although we have decided to look at support reduction, the method can be easily adapted to incoporate additional constraint. For example, we can formulate another energy term to account for center of mass for self-balancing.~\cite{make_it_stand_2013} or to account for the physical strength of the fabrication material. In future work, we want to include additional constraint to make 3D model self-support itself in a variety of scenarios.

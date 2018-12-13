@@ -9,4 +9,5 @@ clean:
 	rm *.synctex.gz		||:
 	rm *.bcf			||:
 	rm *.blg			||:
+	rm *.bbl			||:
 	rm *.xml			||:
