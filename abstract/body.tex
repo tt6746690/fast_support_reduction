@@ -1,11 +1,11 @@
 
 \subsection*{Introduction}
 
-Fused filament fabrication is a popular 3D fabrication process whereby the molten materials are deposited layer by layer. Supporting structures are fabricated concurrently and act as a fixture to support the weights of material that constitute the overhanging regions. Supporting structures introduce material waste and prolong the time required for fabrication. Additionally, they often require manual removal and could potentially introduce damage to the model itself. It is desirable to print models with minimal supporting structures.
+Fused filament fabrication is a popular 3D fabrication process whereby the molten materials are deposited layer by layer. Supporting structures are fabricated concurrently and act as a fixture to support the weight of the material in overhanging regions. Supporting structures introduce material waste and prolong the time required for fabrication. Additionally, they often require manual removal, which could potentially damage the model. Thus, it is desirable to print models with minimal supporting structures.
 
-There are several approaches to the problem.~\cite{jiang_xu_stringer_2018} One approach focuses on finding the best printing orientation and designing better support generation algorithms.~\cite{vanek_galicia_benes_2014} Alternatively, people have incorporated support structure constraints to topology optimization during model design.~\cite{langelaar_2016} The most relevant approach to this abstract relies on deforming the shape itself for self-support in situation where the geometry of the shape is not critical. There has been attempt to reduce the number of overhanging regions iteratively by deforming an enclosing coarser volumetric mesh.~\cite{hu_jin_wang_2015}.
+There are several approaches to the problem~\cite{jiang_xu_stringer_2018}. One approach focuses on finding the best printing orientation and designing better support generation algorithms~\cite{vanek_galicia_benes_2014}. There has also been work on incorporating support structure constraints to topology optimization during model design~\cite{langelaar_2016}. The approach most relevant to this abstract relies on deforming the shape itself for self-support in situations where the geometry of the shape is not critical. There has been an attempt to reduce the number of overhanging regions iteratively by deforming an enclosing coarser volumetric mesh~\cite{hu_jin_wang_2015}.
 
-Linear blend skinning is a fast deformation method. Recent work shown impressive result in automatically generating weights for smooth and intuitive deformation~\cite{jacobson_bounded_biharmonic_weights_2011} and in efficiently computing as-rigid-as-possible deformations by searching in the subspace of skinning deformations.~\cite{jacobson_fast_2012}.
+Linear blend skinning is a fast deformation method. Recent work has shown impressive results in automatically generating weights for smooth and intuitive deformations~\cite{jacobson_bounded_biharmonic_weights_2011} and in efficiently computing as-rigid-as-possible deformations by searching the subspace of skinning deformations~\cite{jacobson_fast_2012}.
 
 This abstract presents a method for finding natural deformations with reduced support structures. We pose the problem of support reduction as a global optimization problem over the space of linear blend skinning deformations minimizing several objectives, namely
 \begin{enumerate}
@@ -13,11 +13,11 @@ This abstract presents a method for finding natural deformations with reduced su
     \item support structures
     \item self-intersection
 \end{enumerate}
-We implemented a prototype and fabricated some model for visualization.
+We implemented a prototype and fabricated some models for visualization.
 
 \subsection*{Method}
 
-Let $\calM = (\bV, \bF)$ be rest-pose mesh living in dimension $d\in\{2,3\}$. Let $\bV = \{\bv_1^T, \cdots, \bv_n^T\}^T \in \R^{n \times d}$ be the rest-pose vertex positions. Let $\calM' = (\bV', \bF)$ be deformed mesh.
+Let $\calM = (\bV, \bF)$ be a rest-pose mesh living in dimension $d\in\{2,3\}$. Let $\bV = \{\bv_1^T, \cdots, \bv_n^T\}^T \in \R^{n \times d}$ be the rest-pose vertex positions. Let $\calM' = (\bV', \bF)$ be the deformed mesh.
 
 \subsubsection*{Linear Blend Skinning}
 
@@ -47,15 +47,15 @@ where $w_j: \calM \rightarrow \R$ is computed using bounded biharmonic weights.\
 
 \subsubsection*{As-rigid-as-possible Energy}
 
-To obtain natural deformations, we minimize a distortion energy $E_{arap}:  \R^{n \times d} \to \R$ which measures local deviation from rigidity and acts to preserve shape detail.~\cite{sorkine_arap_2007}
+To obtain natural deformations, we minimize a distortion energy $E_{arap}:  \R^{n \times d} \to \R$ which measures local deviation from rigidity and acts to preserve shape detail~\cite{sorkine_arap_2007}
 \[
     E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
 \]
-where $\R_f \in SO(d)$ are per-face rotations and $c_{ijf}\in \R$ are cotangent weights. Let $\R = \{\R_1^T, \cdots, \R_f^T, \cdots, \R_n^T \}^T \in \R^{dn \times d}$. We can find $\bR$ in local step before computing $E_{arap}$,
+where $\R_f \in SO(d)$ are per-face rotations and $c_{ijf}\in \R$ are cotangent weights. Let $\R = \{\R_1^T, \cdots, \R_f^T, \cdots, \R_n^T \}^T \in \R^{dn \times d}$. We can find $\bR$ in a local step before computing $E_{arap}$,
 \[
     \bR = \argmin_{\bR} tr(\bR\tilde{\bK}\bT)
 \]
-as specified in \cite{jacobson_fast_2012} vis singular value decomposition.
+as specified in \cite{jacobson_fast_2012} via singular value decomposition.
 
 % We can define the \textit{as-rigid-as-possible} deformation energy, which measures local distortion, to be
 % \[
@@ -84,7 +84,7 @@ An overhanging region that can be 3D printed without support is called \textit{s
     \quad \rightarrow \quad
     \bn_f \cdot \bd_{p} < - \tau
 \]
-where $\bn_f$ is unit normal of face $f$ and $\bd_{p}$ is the printing direction. Let $\partial \calM' \subset \bF$ be surface faces of the deformed mesh. We can approximate the volume of support required for any face risky $f$ by computing the volume of a rectangular prism,
+where $\bn_f$ is unit normal of face $f$ and $\bd_{p}$ is the printing direction. Let $\partial \calM' \subset \bF$ be surface faces of the deformed mesh. We can approximate the volume of support required for any risky face $f$ by computing the volume of a rectangular prism,
 \[
     \lambda(f) = 
     \begin{cases}
@@ -99,9 +99,9 @@ where $A_f$ is the area of the face, $\bc_f$ is the centroid of the face. We def
 
 \subsubsection*{Self-intersection Energy}
 
-One dominant artifact in skinning deformation is self-intersection, which renders the shape not 3D printable. We call a subset of mesh $\calM$ bordered by intersecting tetrahedra the \textit{self-intersecting region}. To quantify the total volume $V_i$ of each self-intersecting region, we define a $k\times k$ grid below the mesh and trace rays up in direction of the printing direction from every grid point. A ray is inside a self-intersecting region if $\bd_{p} \cdot \bn_f < 0$ for 2 consecutively incident faces. Summation of distances $d_j$ that $j$-th ray traversed inside a self-intersecting region approximates the volume. We can define a self-intersection energy $E_{intersect}: \R^{n\times d} \to \R$ which measures the total volume of the self-intersecting regions as follows,
+One dominant artifact in skinning deformations is self-intersection, which renders the shape unprintable. We call a subset of mesh $\calM$ bordered by intersecting tetrahedra a \textit{self-intersecting region}. To measure the volume $V_i$ of self-intersecting region $i$, we define a $k\times h$ grid below the mesh and trace rays up in the printing direction from every grid point. A ray is inside a self-intersecting region if $\bd_{p} \cdot \bn_f < 0$ for 2 consecutively incident faces. The sum of distances $d_j$ that the $j$-th ray traversed inside a self-intersecting region approximates the volume. We define a self-intersection energy $E_{intersect}: \R^{n\times d} \to \R$ which measures the total volume of the self-intersecting regions as follows,
 \[
-    E_{intersect}(\bV') = \sum_i V_i = \sum_{j=1}^{k\times k} d_j
+    E_{intersect}(\bV') = \sum_i V_i = \sum_{j=1}^{k\times h} d_j
 \]
 
 % traversed inside each region 
@@ -121,15 +121,15 @@ One dominant artifact in skinning deformation is self-intersection, which render
 
 \subsubsection*{Optimization}
 
-We perform global optimization over the space of linear blend skinning transformations using particle swarm optimization, as noted in \cite{jacobson_matryoshka_2017}. We define a single objective function $E: \R^{3m} \to \R$ as a weighted sum of 3 energy functions,
+We perform global optimization over the space of linear blend skinning transformations using particle swarm optimization, as described in \cite{jacobson_matryoshka_2017}. We define a single objective function $E: \R^{3m} \to \R$ as a weighted sum of the three energy functions,
 \[
     E(\bx) = \omega_1 E_{arap}(\bV') + \omega_2 E_{overhang}(\bV') + \omega_3 E_{intersect}(\bV')
 \]
-where $\bx = \{ \phi_j, \theta_j, \psi_j \}_{j=1}^m$ are euler's angles describing the local rotation for each handle $h_j \in \calH$. We use forward kinematics to propagate local rotations $\bx$ in order to compute the transformation matrix $\bT$. We apply linear blend skinning formula $\bV' = \bM \bT$ to determine vertex positions for the deformed mesh, from which we can determine the value for as-rigid-as-possible, overhang, and self-intersection energy. $\omega_1,\omega_2,\omega_3$ are hyperparameters used to adjust relative weight of different objectives and are chosen a posteriori.
+where $\bx = \{ \phi_j, \theta_j, \psi_j \}_{j=1}^m$ are Euler's angles describing the local rotation for each handle $h_j \in \calH$. We use forward kinematics to propagate local rotations $\bx$ in order to compute the transformation matrix $\bT$. We apply the linear blend skinning formula $\bV' = \bM \bT$ to determine vertex positions for the deformed mesh, from which we can determine the value for the as-rigid-as-possible, overhang, and self-intersection energies. $\omega_1,\omega_2,\omega_3$ are hyperparameters used to adjust the relative weight of different objectives and are fixed a priori.
 
 \subsection*{Experiments \& Results}
 
-We use the same default settings for particle swarm optimization as specified in \cite{jacobson_matryoshka_2017} with 200 random initial particles and 120 iterations for both Figure.~\ref{fig:bb_bunny} and Figure.~\ref{fig:bunny}. By observing the viewer and fabricated model, we observe a reduction in the number of \textit{risky} faces as well as support materials used. The generated deformation are natural and has some but negligible self-intersection.
+We use the same default settings for particle swarm optimization as specified in \cite{jacobson_matryoshka_2017} with 200 random initial particles and 120 iterations for both Figure.~\ref{fig:bb_bunny} and Figure.~\ref{fig:bunny}. By observing the viewer and fabricated model, we observe a reduction in the number of \textit{risky} faces as well as support materials used. The generated deformations are natural and have negligible self-intersections.
 
 \begin{figure}[ht]
     \centering
@@ -140,15 +140,15 @@ We use the same default settings for particle swarm optimization as specified in
     \includegraphics[width=0.13\textwidth]{bunny_deformed.png} 
     \includegraphics[width=0.13\textwidth]{bunny_deformed_igl.png} 
     \includegraphics[width=0.13\textwidth]{bunny_deformed_3dp.png}
-    \caption{Our method reduces support material usage by 37\% on the bunny}
+    \caption{Our method reduces support material usage by 37\% on the Stanford bunny}
     \label{fig:bunny}
 \end{figure}
 
 
 \subsection*{Limitations and Future Work}
 
-Hyperparameters $\omega_1, \omega_2, \omega_3$ are tuned manually by experimentation and there is no clear way to pick sensible values because the objectives are tradeoffs and often act in conflict with each other. For example, overhang free deformation may introduce a large amount of distortions. In future work, we would like to investigate more on multi-objective optimization.
+Hyperparameters $\omega_1, \omega_2, \omega_3$ are tuned manually by experimentation and there is no clear way to pick sensible values because the objectives are tradeoffs and often act in conflict with each other. For example, an overhang free deformation may introduce a large amount of distortion. In future work, we would like to investigate more on multi-objective optimization.
 
-Currently, An entire run of the optimization procedure took several minutes for Figure.~\ref{fig:bb_bunny} and Figure.~\ref{fig:bunny}. There are huge potential in moving linear blend skinning and energy computation to vertex shaders for fast and parallel computation. In future work, we want to re-implement bottleneck steps using OpenGL for real time computation to allow for interactive design.
+Currently, an entire run of the optimization procedure takes several minutes for Figure.~\ref{fig:bb_bunny} and Figure.~\ref{fig:bunny}. There is huge potential in moving the linear blend skinning and energy computations to vertex shaders for fast and parallel execution. In future work, we want to re-implement bottleneck steps using OpenGL for real time computation to allow for interactive design.
 
-Although we have decided to look at support reduction, the method can be easily adapted to incoporate additional constraint. For example, we can formulate another energy term to account for center of mass for self-balancing.~\cite{make_it_stand_2013} or to account for the physical strength of the fabrication material. In future work, we want to include additional constraint to make 3D model self-support itself in a variety of scenarios.
+Although we have decided to look at support reduction, the method can be easily adapted to incoporate additional constraints. For example, we can formulate another energy term to account for center of mass for self-balancing~\cite{make_it_stand_2013} or to account for the physical strength of the fabrication material. In future work, we want to include additional constraints to make the 3D model support itself in a variety of scenarios.
