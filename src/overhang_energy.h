@@ -14,9 +14,6 @@
 #include <iostream>
 
 // Computes overhang energy for 2d and 3d cases
-//      
-//      E(V) = \int_{∂M} min(nˆ(x) · dp + τ, 0)dx
-//
 //
 // Inputs:
 //      V,  #V by dim
@@ -107,7 +104,6 @@ void per_face_centroid(
 //      dp,             printing direction (normalized)
 //      tau,            self-supporting coefficient, τ = sin(α_max)
 // Outputs:
-//      unsafe, _ by 2  unsafe edges for both {2, 3} dimension, i.e. indices into F
 //      overhang energy E(V)
 template <
     typename DerivedV,
@@ -162,7 +158,6 @@ double overhang_energy_3d(
 //      tau,            self-supporting coefficient, τ = sin(α_max)
 // Outputs:
 //      unsafe, _ by 2  unsafe edges for both {2, 3} dimension, i.e. indices into F
-//      overhang energy E(V)
 template <
     typename DerivedV,
     typename DerivedF,

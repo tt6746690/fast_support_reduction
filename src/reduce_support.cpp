@@ -33,7 +33,7 @@ typedef
 //  Inputs:
 //      `X` 1 x 6m
 //          flattened input to black-box optimization
-//      C, BE, P
+//       C, BE, P
 //          arguments for forward kinematics
 //  Outputs:
 //      T   (d+1)m x d
@@ -54,12 +54,14 @@ void unzip(
     for (int j = 0; j < BE.rows(); ++j) {
         th = X.segment(3*j, 3);
 
+        /*
         // this stops VS2017 from complaining about mixing numeric types
-        /*Eigen::Quaternionf qf = Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *
+        Eigen::Quaternionf qf = Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *
             Eigen::AngleAxisf(th(1), Eigen::Vector3f::UnitY()) *
             Eigen::AngleAxisf(th(2), Eigen::Vector3f::UnitZ());
         Eigen::Quaterniond qd = qf.cast<double>();
-        dQ.emplace_back(qd);*/
+        dQ.emplace_back(qd);
+        */
 
         dQ.emplace_back(
             Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *

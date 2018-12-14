@@ -4,6 +4,7 @@
 #include <Eigen/Sparse>
 
 
+// Configuration that controls behavior of optimization procedure
 template <typename T>
 class ReduceSupportConfig{
 public:
