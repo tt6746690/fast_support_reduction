@@ -51,7 +51,7 @@ To obtain natural deformations, we minimize a distortion energy $E_{arap}:  \R^{
 \[
     E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
 \]
-where $\R_f \in SO(d)$ are per-face rotations and $c_{ijk}\in \R$ are cotangent weights. Let $\R = \{\R_1^T, \cdots, \R_f^T, \cdots, \R_n^T \}^T \in \R^{dn \times d}$. We can find $\bR$ in a local step before computing $E_{arap}$,
+where $\R_f \in SO(d)$ are per-face rotations and $c_{ijf}\in \R$ are cotangent weights. Let $\R = \{\R_1^T, \cdots, \R_f^T, \cdots, \R_n^T \}^T \in \R^{dn \times d}$. We can find $\bR$ in a local step before computing $E_{arap}$,
 \[
     \bR = \argmin_{\bR} tr(\bR\tilde{\bK}\bT)
 \]
@@ -84,7 +84,7 @@ An overhanging region that can be 3D printed without support is called \textit{s
     \quad \rightarrow \quad
     \bn_f \cdot \bd_{p} < - \tau
 \]
-where $\bn_f$ is unit normal of face $f$ and $\bd_{p}$ is the printing direction. Let $\partial \calM' \subset \bF$ be surface faces of the deformed mesh. Let $A(\cdot)$ be the area function and $c(\cdot)$ be the centroid function for a face $f$. We can approximate the volume of support required for any risky face $f$ by computing the volume of a rectangular prism,
+where $\bn_f$ is unit normal of face $f$ and $\bd_{p}$ is the printing direction. Let $\partial \calM' \subset \bF$ be surface faces of the deformed mesh. We can approximate the volume of support required for any risky face $f$ by computing the volume of a rectangular prism,
 \[
     \lambda(f) = 
     \begin{cases}
