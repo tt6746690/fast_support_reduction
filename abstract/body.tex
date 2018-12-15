@@ -1,13 +1,13 @@
 
 \subsection*{INTRODUCTION}
 
-Fused filament fabrication is a popular 3D fabrication process whereby the molten materials are deposited layer by layer. Supporting structures are fabricated concurrently and act as a fixture to support the weight of the material in overhanging regions. Supporting structures introduce material waste and prolong the time required for fabrication. Additionally, they often require manual removal, which could potentially damage the model. Thus, it is desirable to print models with minimal supporting structures.
+Fused filament fabrication is a popular 3D fabrication process whereby the molten materials are deposited layer by layer. Supporting structures are fabricated concurrently and act as a fixture to support the weight of the material in overhanging regions. However, supporting structures introduce material waste and prolong the time required for fabrication. Additionally, as the support removel step is always performed manually, it is easy to damage the model and leave visual artifacts on the surface. Thus, it is desirable to print models with minimal supporting structures.
 
-There are several approaches to the problem~\cite{jiang_xu_stringer_2018}. One approach focuses on finding the best printing orientation and designing better support generation algorithms~\cite{vanek_galicia_benes_2014}. There has also been work on incorporating support structure constraints to topology optimization during model design~\cite{langelaar_2016}. The approach most relevant to this abstract relies on deforming the shape itself for self-support in situations where the geometry of the shape is not critical. There has been an attempt to reduce the number of overhanging regions iteratively by deforming an enclosing coarser volumetric mesh~\cite{hu_jin_wang_2015}.
+There are several existing work that attempts to tackle the problem~\cite{jiang_xu_stringer_2018}. One approach focuses on finding the best printing orientation and developing better support generation algorithms~\cite{vanek_galicia_benes_2014}. There has also been work on exerting support structure constraints on topology optimization during model design~\cite{langelaar_2016}. The approach most relevant to this abstract relies on deforming the shape itself for self-support in situations where the geometry of the shape is not necessary to be perfectly preserved. There has been an attempt to reduce the number of overhanging regions iteratively by deforming an enclosing coarser volumetric mesh~\cite{hu_jin_wang_2015}.
 
-Linear blend skinning is a fast deformation method. Recent work has shown impressive results in automatically generating weights for smooth and intuitive deformations~\cite{jacobson_bounded_biharmonic_weights_2011} and in efficiently computing as-rigid-as-possible deformations by searching the subspace of skinning deformations~\cite{jacobson_fast_2012}.
+Linear blend skinning is a fast deformation method. Recent work has shown impressive results in automatically generating weights for smooth and intuitive deformations~\cite{jacobson_bounded_biharmonic_weights_2011} and efficiently computing as-rigid-as-possible deformations by searching the subspace of skinning deformations~\cite{jacobson_fast_2012}.
 
-This abstract presents a method for finding natural deformations with reduced support structures. We pose the problem of support reduction as a global optimization problem over the space of linear blend skinning deformations minimizing several objectives, namely
+This abstract presents a method for finding natural deformations with reduced support structures. We pose the problem of support reduction as a global optimization problem over the space of linear blend skinning deformations minimizing a weightedcombination of several objectives, namely
 \begin{enumerate}
     \item local distortion ~\cite{sorkine_arap_2007}
     \item support structures
@@ -47,7 +47,7 @@ where $w_j: \calM \rightarrow \R$ is computed using bounded biharmonic weights.\
 
 \subsubsection*{AS-RIGID-AS-POSSIBLE ENERGY}
 
-To obtain natural deformations, we minimize a distortion energy $E_{arap}:  \R^{n \times d} \to \R$ which measures local deviation from rigidity and acts to preserve shape detail~\cite{sorkine_arap_2007}
+To obtain natural deformations, we minimize a distortion energy $E_{arap}:  \R^{n \times d} \to \R$ which measures local deviation from rigidity and acts to preserve shape details~\cite{sorkine_arap_2007}
 \[
     E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
 \]
@@ -125,11 +125,11 @@ We perform global optimization over the space of linear blend skinning transform
 \[
     E(\bx) = \omega_1 E_{arap}(\bV') + \omega_2 E_{overhang}(\bV') + \omega_3 E_{intersect}(\bV')
 \]
-where $\bx = \{ \phi_j, \theta_j, \psi_j \}_{j=1}^m$ are Euler's angles describing the local rotation for each handle $h_j \in \calH$. We use forward kinematics to propagate local rotations $\bx$ in order to compute the transformation matrix $\bT$. We apply the linear blend skinning formula $\bV' = \bM \bT$ to determine vertex positions for the deformed mesh, from which we can determine the value for the as-rigid-as-possible, overhang, and self-intersection energies. $\omega_1,\omega_2,\omega_3$ are hyperparameters used to adjust the relative weight of different objectives and are fixed a priori.
+where $\bx = \{ \phi_j, \theta_j, \psi_j \}_{j=1}^m$ are Euler's angles describing the local rotation for each handle $h_j \in \calH$. We use forward kinematics to propagate local rotations $\bx$ in order to compute the transformation matrix $\bT$. We apply the linear blend skinning formula $\bV' = \bM \bT$ to determine vertex positions for the deformed mesh, from which we can figure out the value of the as-rigid-as-possible, overhang, and self-intersection energies. $\omega_1,\omega_2,\omega_3$ are hyperparameters used to adjust the relative weight of different objectives and are fixed a priori.
 
 \subsection*{EXPERIMENTS \& RESULTS}
 
-We use the same default settings for particle swarm optimization as specified in \cite{jacobson_matryoshka_2017} with 200 random initial particles and 120 iterations for both Figure.~\ref{fig:bb_bunny} and Figure.~\ref{fig:bunny}. By observing the viewer and fabricated model, we observe a reduction in the number of \textit{risky} faces as well as support materials used. The generated deformations are natural and have negligible self-intersections.
+We use the same default settings for particle swarm optimization as specified in \cite{jacobson_matryoshka_2017} with 200 random initial particles and 120 iterations for both Figure.~\ref{fig:bb_bunny} and Figure.~\ref{fig:bunny}. By observing and quantitatively comparing the viewer and fabricated models, we witness a reduction in the number of \textit{risky} faces as well as support materials used. The generated deformations are natural and have negligible self-intersections.
 
 \begin{figure}[ht]
     \centering
@@ -143,6 +143,26 @@ We use the same default settings for particle swarm optimization as specified in
     \caption{Our method reduces support material usage by 37\% on the Stanford bunny}
     \label{fig:bunny}
 \end{figure}
+
+\begin{center}
+    Table 1: Statistics of Support Reduction Performance
+\end{center}
+
+\begin{center}
+    \begin{tabular}{ |c|c|c|c| } 
+    \hline
+    \textbf{Model} & \textbf{Before} & \textbf{After} & \textbf{Reduced By}\\
+    \hline
+    Big Buck Bunny Figure 1 & $0.98 in^{3}$ & $0.83 in^{3}$ & $15\%$\\ 
+    \hline
+    Stanford Bunny Figure 2 & $0.79in^{3}$ & $0.50in^{3}$ & $37\%$ \\ 
+    \hline
+    \end{tabular}
+\end{center}
+
+\begin{center}
+   
+\end{center}
 
 
 \subsection*{LIMITATIONS AND FUTURE WORK}
