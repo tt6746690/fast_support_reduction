@@ -3,7 +3,7 @@
 
 Fused filament fabrication is a popular 3D fabrication process whereby the molten materials are deposited layer by layer. Supporting structures are fabricated concurrently and act as a fixture to support the weight of the material in overhanging regions. However, supporting structures introduce material waste and prolong the time required for fabrication. Additionally, the support removel step is performed manually or by dissolution, which are easy to damage the model and leave visual artifacts on the surface. Thus, it is desirable to print models with minimal supporting structures.
 
-There are several approaches to tackle the problem~\cite{jiang_xu_stringer_2018}. One approach focuses on finding the best printing orientation and designing better support generation algorithms~\cite{vanek_galicia_benes_2014}. There has also been work on exerting support structure constraints on topology optimization during model design~\cite{langelaar_2016}. The approach most relevant to this abstract relies on deforming the shape itself for self-support in situations where the geometry of the shape is not necessary to be perfectly preserved. There has been an attempt to reduce the number of overhanging regions iteratively by deforming an enclosing coarser volumetric mesh~\cite{hu_jin_wang_2015}.
+There are several approaches to tackle the problem~\cite{jiang_xu_stringer_2018}. One approach focuses on finding the best printing orientation and designing better support generation algorithms~\cite{vanek_galicia_benes_2014}. There has also been work on incorporating support structure constraints in topology optimization during model design~\cite{langelaar_2016}. The approach most relevant to this abstract relies on deforming the shape itself for self-support in situations where the geometry of the shape is not necessary to be perfectly preserved. There has been an attempt to reduce the number of overhanging regions iteratively by deforming an enclosing coarser volumetric mesh~\cite{hu_jin_wang_2015}.
 
 Linear blend skinning is a fast deformation method. Recent work has shown impressive results in automatically generating weights for smooth and intuitive deformations~\cite{jacobson_bounded_biharmonic_weights_2011} and in efficiently computing as-rigid-as-possible deformations by searching the subspace of skinning deformations~\cite{jacobson_fast_2012}.
 
@@ -19,7 +19,7 @@ We implemented a prototype and fabricated some models for visualization.
 
 Let $\calM = (\bV, \bF)$ be a rest-pose mesh living in dimension $d\in\{2,3\}$. Let $\bV = \{\bv_1^T, \cdots, \bv_n^T\}^T \in \R^{n \times d}$ be the rest-pose vertex positions. Let $\calM' = (\bV', \bF)$ be the deformed mesh.
 
-\subsubsection*{Linear Blend Skinning}
+\subsubsection*{LINEAR BLEND SKINNING}
 
 Given a set of handles $\calH = \{ \bh_1, \cdots, \bh_m \}$, we can apply an affine transformation $\bT_j \in \R^{d \times (d+1)}$ on each handle $\bh_j$. Let $\bT = \{ \bT_1^T, \cdots, \bT_m^T \}^T \in \R^{(d+1)m \times d}$. Linear blend skinning is a deformation method whereby the vertex positions on the deformed shape are represented as a weighted linear combination of the handles' transformations,
 \[
