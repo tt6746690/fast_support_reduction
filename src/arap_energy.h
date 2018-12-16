@@ -52,11 +52,11 @@ void arap_precompute(
     typedef Eigen::Matrix<ScalarV, 3, 1> RowVector3VT;
     typedef Eigen::Matrix<ScalarF, 3, 1> RowVector3FT;
 
-    // Compute L
+    // Compute L matrix
     igl::cotmatrix(V, F, L);
 
 
-    // Compute K
+    // Compute K matrix
     std::vector<Eigen::Triplet<ScalarV>> triplets;
     triplets.reserve(F.rows() * 3 * 3 * 3 * 2);
 
@@ -159,6 +159,7 @@ double arap_energy(
     typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
     typedef Eigen::Matrix<ScalarT, 3, 1> Vector3T;
 
+    // construct matrix C
     MatrixXT U, C;
     U = M * T;
     C = K.transpose() * U;
@@ -166,7 +167,7 @@ double arap_energy(
 
     MatrixXT R(C.cols(), C.rows());
     
-    // construct matrix R
+    // construct matrix R: fit local rotation
     const int size = U.rows();
     Matrix3T Ck, Rk;
     for (int k = 0; k < size; k++) {
@@ -178,11 +179,14 @@ double arap_energy(
 
     lii edge_indices;
     if (is3d) {
-        edge_indices = lii{{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}};
+        edge_indices = lii{{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}}; // a tetrahedron has six edges
     } else {
         edge_indices = lii{{0, 1}, {1, 2}, {2, 0}};
     }
 
+
+    // compute the arap energy
+    // E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
     double obj = 0;
     int a, b;
     double coeff;

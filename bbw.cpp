@@ -35,6 +35,7 @@ int main(int argc, char*argv[]) {
     igl::readOBJ(DATA_PATH+filename+".obj", V, F);
     igl::readTGF(DATA_PATH+filename+".tgf", C, BE);
 
+    // remesh based on the input skeleton
     Eigen::MatrixXd VV;
     Eigen::MatrixXi TT, FF;
     igl::copyleft::tetgen::mesh_with_skeleton(V, F, C, VectorXi(), BE, MatrixXi(), 50, "pq2Y", VV, TT, FF);
