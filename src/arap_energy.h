@@ -52,11 +52,11 @@ void arap_precompute(
     typedef Eigen::Matrix<ScalarV, 3, 1> RowVector3VT;
     typedef Eigen::Matrix<ScalarF, 3, 1> RowVector3FT;
 
-    // Compute L
+    // Compute L matrix
     igl::cotmatrix(V, F, L);
 
 
-    // Compute K
+    // Compute K matrix
     std::vector<Eigen::Triplet<ScalarV>> triplets;
     triplets.reserve(F.rows() * 3 * 3 * 3 * 2);
 
@@ -114,21 +114,22 @@ void arap_single_iteration(
 
 
 
-// Computes ARAP energy given T, R
+// Computes ARAP energy given K
 // notice that R are local rotation matrices, not a part of DOFs
 //
-//      E(V', R) = 0.5 * tr(T^t * \tilde{L} * T) + tr(T^t * \tilde{K} * R)
-//      E(V', R) = 0.5 * tr(T^t * M^t * L * M * T) + tr(T^t * M^t * K * R)
+// E(V') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
 // 
 // Inputs:
-//   T,  (d+1)m x d
+//   V  #V by d vertex positions    d is dimension
+//   T  (d+1)m x d
 //      vertical stack of transposed affine transformation for handles
 //   M  n by m      n is number of vertices, m is number of handles
 //       Linear blend skinning matrix `M` for computing `V' = M * T`
-//   tL, (d+1)m by (d+1)m
-//      \tilde{L} in above expression
-//   tK, (d+1)m by dn
-//      \tilde{K} in above expression
+//   F  #F by simplex-size list of element indices
+//   L  (d+1)m by (d+1)m
+//      cotangent matrix
+//   K (d+1)m by dn
+//      precomputed data matrix
 //
 //      where d is dimension, 
 //            m is number of handles
@@ -159,6 +160,7 @@ double arap_energy(
     typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
     typedef Eigen::Matrix<ScalarT, 3, 1> Vector3T;
 
+    // construct matrix C
     MatrixXT U, C;
     U = M * T;
     C = K.transpose() * U;
@@ -166,7 +168,7 @@ double arap_energy(
 
     MatrixXT R(C.cols(), C.rows());
     
-    // construct matrix R
+    // construct matrix R: fit local rotation
     const int size = U.rows();
     Matrix3T Ck, Rk;
     for (int k = 0; k < size; k++) {
@@ -178,11 +180,14 @@ double arap_energy(
 
     lii edge_indices;
     if (is3d) {
-        edge_indices = lii{{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}};
+        edge_indices = lii{{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}}; // a tetrahedron has six edges
     } else {
         edge_indices = lii{{0, 1}, {1, 2}, {2, 0}};
     }
 
+
+    // compute the arap energy
+    // E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
     double obj = 0;
     int a, b;
     double coeff;
