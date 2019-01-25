@@ -1,5 +1,4 @@
-#ifndef __OVERHANG_ENERGY_H__
-#define __OVERHANG_ENERGY_H__
+#pragma once
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 
@@ -195,7 +194,3 @@ void overhang_energy_risky(
     }
     unsafe.conservativeResize(k, unsafe.cols());
 }
-
-
-
-#endif

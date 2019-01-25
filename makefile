@@ -1,4 +1,12 @@
 
 all:
-	# build/support_reduction woody-cross 1 1 45 20 0.0001 1 1 0
-	build/support_reduction hand 1 1 1 45 20 100 1 10 0
+	build/support_reduction \
+		--filename hand \
+		--n_fixed_bones 1 \
+		--pso_iters 1 \
+		--pso_population 1 \
+		--rotation_angle 30 \
+		--c_arap 1 \
+		--c_overhang 1 \
+		--c_intersect 1
+

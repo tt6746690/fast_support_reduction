@@ -13,7 +13,6 @@
 #include <igl/copyleft/tetgen/mesh_with_skeleton.h>
 
 
-#include "src/defs.h"
 #include <string>
 
 int main(int argc, char*argv[]) {

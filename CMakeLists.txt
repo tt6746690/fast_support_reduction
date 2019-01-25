@@ -3,26 +3,21 @@ project(fast_support_reduction)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-# debugging
+option(WITH_BBW         "Generate bin for bbw"               OFF)
+option(WITH_VISUALIZE   "Geneate bin for visualization"      OFF)
+option(WITH_DEBUG       "Enable debugging"                   ON)
 
-option(WITH_DEBUG "Enable debugging" ON)
 if(WITH_DEBUG)
     add_compile_options(-O0)
     add_definitions(-DDEBUG)
+    add_definitions(${CMAKE_CXX_FLAGS} "-g")
+    add_definitions(${CMAKE_CXX_FLAGS} "-Wall")
 else()
     add_compile_options(-O3)
     add_definitions(-DNDEBUG)
+    add_definitions(${CMAKE_CXX_FLAGS} "-march=native")
 endif()
 
-option(WITH_VISUALIZE "Enable visualization" OFF)
-if(WITH_VISUALIZE)
-    add_definitions(-DVISUALIZE)
-endif()
-
-
-# compiler 
-add_definitions(${CMAKE_CXX_FLAGS} "-g")
-add_definitions(${CMAKE_CXX_FLAGS} "-Wall")
 
 # libigl
 
@@ -36,6 +31,10 @@ find_package(LIBIGL REQUIRED QUIET)
 
 add_definitions(-DMTR_ENABLED)
 
+# Clara 
+
+include_directories(libs/Clara/include)
+
 # source files
 
 file(GLOB SRCFILES 
@@ -44,11 +43,16 @@ file(GLOB SRCFILES
 
 # executables
 
-# add_executable(bbw bbw.cpp ${SRCFILES})
-# target_link_libraries(bbw igl::core igl::opengl_glfw igl::tetgen)
+if(WITH_BBW)
+    add_executable(bbw bbw.cpp ${SRCFILES})
+    target_link_libraries(bbw igl::core igl::opengl_glfw igl::tetgen)
+endif()
 
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 target_link_libraries(support_reduction igl::core igl::opengl_glfw)
 
-# add_executable(visualize visualize.cpp ${SRCFILES})
-# target_link_libraries(visualize igl::core igl::opengl_glfw)
+if(WITH_VISUALIZE)
+    add_definitions(-DVISUALIZE)
+    add_executable(visualize visualize.cpp ${SRCFILES})
+    target_link_libraries(visualize igl::core igl::opengl_glfw)
+endif()

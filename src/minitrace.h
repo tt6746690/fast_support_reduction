@@ -18,8 +18,7 @@
 // More:
 // http://www.altdevblogaday.com/2012/08/21/using-chrometracing-to-view-your-inline-profiling-data/
 
-#ifndef __MINITRACE_H__
-#define __MINITRACE_H__
+#pragma once
 
 #include <inttypes.h>
 
@@ -263,5 +262,3 @@ private:
 
 #endif
 
-
-#endif

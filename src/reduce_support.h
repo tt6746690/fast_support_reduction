@@ -1,5 +1,4 @@
-#ifndef __REDUCE_SUPPORT_H__
-#define __REDUCE_SUPPORT_H__
+#pragma once
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 
@@ -134,6 +133,3 @@ double reduce_support(
     ReduceSupportConfig<double>& config,
     Eigen::MatrixXd& T,
     Eigen::MatrixXd& U);
-
-
-#endif

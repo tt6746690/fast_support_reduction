@@ -11,11 +11,7 @@ git clone --recursive git@github.com:tt6746690/fast_support_reduction.git
 mkdir build && cd build
 
 # debugging, or
-cmake ..
-# 03! or
-cmake .. -DWITH_DEBUG=OFF
-# visualize overhangs
-cmake .. -DWITH_VISUALIZE=ON
+cmake -GNinja ..
 
 # run 
 # build/support_reduction 

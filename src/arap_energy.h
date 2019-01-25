@@ -1,5 +1,4 @@
-#ifndef __ARAP_ENERGY_H__
-#define __ARAP_ENERGY_H__
+#pragma once
 #include "minitrace.h"
 
 #include <Eigen/Core>
@@ -213,5 +212,3 @@ double arap_energy(
     return obj;
 }
 
-
-#endif

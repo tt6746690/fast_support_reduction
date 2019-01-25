@@ -1,5 +1,4 @@
-#ifndef __SELF_INTERSECTION_H__
-#define __SELF_INTERSECTION_H__
+#pragma once
 #include <Eigen/Sparse>
 #include <Eigen/Core>
 
@@ -28,5 +27,3 @@ double self_intersection_2d(
 double self_intersection_3d(
     const Eigen::MatrixXf Vf,
     const Eigen::MatrixXi F);
-
-#endif
