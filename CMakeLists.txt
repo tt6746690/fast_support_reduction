@@ -48,8 +48,11 @@ if(WITH_BBW)
     target_link_libraries(bbw igl::core igl::opengl_glfw igl::tetgen)
 endif()
 
-add_executable(support_reduction support_reduction.cpp ${SRCFILES})
-target_link_libraries(support_reduction igl::core igl::opengl_glfw)
+# add_executable(support_reduction support_reduction.cpp ${SRCFILES})
+# target_link_libraries(support_reduction igl::core igl::opengl_glfw)
+
+add_executable(gl gl.cpp ${SRCFILES})
+target_link_libraries(gl igl::core igl::opengl_glfw)
 
 if(WITH_VISUALIZE)
     add_definitions(-DVISUALIZE)
