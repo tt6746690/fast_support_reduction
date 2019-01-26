@@ -1,4 +1,5 @@
 #pragma once
+#include <Eigen/Core>
 
 #include <string>
 #include <vector>
@@ -16,11 +17,13 @@ public:
            : prog_id(0),
              time_of_prev_compilation(0),
              vertex_shader_paths(vertex_shader_paths),
-             fragment_shader_paths(fragment_shader_paths) 
-    {
-        compile();
-    }
+             fragment_shader_paths(fragment_shader_paths)
+        {}
 
+    void use() {
+        glUseProgram(prog_id);
+    }
+ 
     void compile() {
         shader_paths empty;
         if (any_changed(vertex_shader_paths) || any_changed(fragment_shader_paths)) {
@@ -39,6 +42,30 @@ public:
         }
     }
 
+
+    void set_bool(const std::string& name, bool value) const {
+        glUniform1i(glGetUniformLocation(prog_id, name.c_str()), value);
+    }
+    void set_int(const std::string& name, int value) const {
+        glUniform1i(glGetUniformLocation(prog_id, name.c_str()), value);
+    }
+    void set_vec3(const std::string& name,
+        Eigen::Matrix<float, 3, 1, Eigen::ColMajor> value) const {
+        glUniform3fv(glGetUniformLocation(prog_id, name.c_str()), 1, value.data());
+    }
+    void set_vec3(const std::string& name,
+        Eigen::Matrix<float, 1, 3, Eigen::RowMajor> value) const {
+        glUniform3fv(glGetUniformLocation(prog_id, name.c_str()), 1, value.data());
+    }
+    void set_mat4(const std::string& name,
+        Eigen::Matrix<float, 4, 4, Eigen::RowMajor> value) const {
+        glUniformMatrix4fv(glGetUniformLocation(prog_id, name.c_str()), 1,  GL_TRUE, value.data());
+    }
+    void set_mat4(const std::string& name,
+        Eigen::Matrix<float, 4, 4, Eigen::ColMajor> value) const {
+        glUniformMatrix4fv(glGetUniformLocation(prog_id, name.c_str()), 1, GL_FALSE, value.data());
+    }
+
 private:
 
     bool any_changed(const std::vector<std::string>& paths) {
@@ -52,11 +79,8 @@ private:
     }
 
 public:
-    // shader program id
     GLuint prog_id;
-    // time to previous compilation 
     double time_of_prev_compilation;
-    // paths to {vertex, fragment} shaders
     shader_paths vertex_shader_paths;
     shader_paths fragment_shader_paths;
 };

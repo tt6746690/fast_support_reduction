@@ -132,7 +132,8 @@ inline bool create_shader_program_from_files(
   }
 
   // create shaders
-  GLuint v=0,tc=0,te=0,f=0;
+  // GLuint v=0,tc=0,te=0,f=0;
+  GLuint v=0,f=0;
 
   create_compile_attach(vertex_shader_paths,GL_VERTEX_SHADER,id,v);
   // create_compile_attach(tess_control_shader_paths,GL_TESS_CONTROL_SHADER,id,tc);
