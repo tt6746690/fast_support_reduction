@@ -10,7 +10,7 @@ git clone --recursive git@github.com:tt6746690/fast_support_reduction.git
 
 mkdir build && cd build
 
-# debugging, or
+# brew install ninja
 cmake -GNinja ..
 
 # run 

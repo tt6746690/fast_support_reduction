@@ -1,6 +1,7 @@
 
 all:
-	build/support_reduction \
+	./build/support_reduction \
+		--data_dir data/ \
 		--filename hand \
 		--n_fixed_bones 1 \
 		--pso_iters 1 \

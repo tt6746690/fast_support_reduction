@@ -37,7 +37,7 @@ const auto rad2deg = [](double radian) {
 
 
 string filename, data_dir;
-bool is3d;
+bool is3d, show_help;
 int n_fixed_bones, pso_iters, pso_population;
 double c_arap, c_overhang, c_intersect, rotation_angle;
 Eigen::RowVector3d dp;  // printing direction
@@ -53,10 +53,8 @@ const RowVector3d sea_green(70./255.,252./255.,167./255.);
 
 int main(int argc, char*argv[]) 
 {
-    mtr_init("build/trace.json");
-
-
-    data_dir       = "data/";
+    show_help      = false;
+    data_dir       = "../data/";
     filename       = "woody";
     n_fixed_bones  = 0;
     pso_iters      = 1;
@@ -67,34 +65,41 @@ int main(int argc, char*argv[])
     c_intersect    = 1;
     rotation_angle = rad2deg(30);
 
-    auto cli
-        = Opt(filename, "filename")
+    auto parser
+        = Help(show_help)
+        | Opt(data_dir, "data_dir").optional()
+            ["-d"]["--data_dir"]
+            ("Data Directory containing mesh/bone/weights etc.")
+        | Opt(filename, "filename").optional()
             ["-f"]["--filename"]
             ("Filename under data/. `filename{.mesh, .obj, .dmat, .tgf}` required")
-        | Opt(n_fixed_bones, "n_fixed_bones")
+        | Opt(n_fixed_bones, "n_fixed_bones").optional()
             ["-b"]["--n_fixed_bones"]
             ("Number of bones to be fixed, from bottom up ")
-        | Opt(pso_iters, "pso_iters")
+        | Opt(pso_iters, "pso_iters").optional()
             ["-i"]["--pso_iters"]
             ("Number of particle swarm optimization iterations")
-        | Opt(pso_population, "pso_population")
+        | Opt(pso_population, "pso_population").optional()
             ["-p"]["--pso_population"]
             ("Size of particle swarm optimization population")
-        | Opt(rotation_angle, "rotation_angle")
+        | Opt(rotation_angle, "rotation_angle").optional()
             ["-r"]["--rotation_angle"]
             ("Maximum rotation (in degrees) of bones allowed")
-        | Opt(c_arap, "c_arap")
+        | Opt(c_arap, "c_arap").optional()
             ["--c_arap"]
             ("Coefficient for as-rigid-as-possible energy")
-        | Opt(c_overhang, "c_overhang")
+        | Opt(c_overhang, "c_overhang").optional()
             ["--c_overhang"]
             ("Coefficient for overhanging energy")
-        | Opt(c_intersect, "c_intersect")
+        | Opt(c_intersect, "c_intersect").optional()
             ["--c_intersect"]
             ("Coefficient for self-intersection energy");
 
-    auto result = cli.parse(clara::Args(argc, argv));
-    if(!result) { cerr<<"Error in command line: "<<result.errorMessage()<<'\n'; exit(1); }
+    auto result = parser.parse(clara::Args(argc, argv));
+    if (!result) { cerr<<"Error in command line: "<<result.errorMessage()<<'\n'; exit(1); }
+    if (show_help) { cout<<parser; exit(0); };
+
+    mtr_init("build/trace.json");
 
     const auto getfilepath = [&](const string& name, const string& ext){ 
         return data_dir + name + "." + ext; };
@@ -110,8 +115,7 @@ int main(int argc, char*argv[])
 
     igl::readTGF(getfilepath(filename, "tgf"), C, BE);
 
-    {
-        // map vertex position to first quadrant
+    {   // map vertex position to first quadrant
         RowVector3d min = V.colwise().minCoeff();
         V = V.rowwise() - min;
         C = C.rowwise() - min;
