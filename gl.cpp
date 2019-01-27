@@ -5,6 +5,7 @@
 
 #include <igl/readOBJ.h>
 #include <igl/ortho.h>
+#include <igl/centroid.h>
 #include <igl/opengl/vertex_array.h>
 #include <igl/opengl/report_gl_error.h>
 
@@ -16,12 +17,13 @@
 #include "src/time_utils.h"
 #include "src/print_opengl_info.h"
 #include "src/shader.h"
+#include "src/box.h"
 
 using namespace Eigen;
 using namespace std;
 
-int scr_width  = 500;
-int scr_height = 400;
+int scr_width  = 800;
+int scr_height = 800;
 
 string filename;
 string data_dir   = "../data/";
@@ -31,22 +33,32 @@ const auto getfilepath = [](const string& name, const string& ext){
     return data_dir + name + "." + ext; 
 };
 
-MatrixXd V;
-MatrixXi F;
+MatrixXd V, Vbox;
+MatrixXi F, Fbox;
 
-GLuint vao, vbo, ebo;
+GLuint vao, vao_box;
 
 bool wire_frame = false;
 bool mouse_down = false;
-Affine3f view = Affine3f::Identity() * Translation3f(Vector3f(0,0,-10));
-Matrix4f proj = Matrix4f::Identity();
 
+Affine3f model = Affine3f::Identity();
+Affine3f view = Affine3f::Identity() * Translation3f(Vector3f(0,0,-1));
+Matrix4f projection = Matrix4f::Identity();
+
+const auto make_centered_model = [](Affine3f& model){
+    double vol;
+    RowVector3d centroid;
+    igl::centroid(V, F, centroid, vol);
+    model = Affine3f::Identity();
+    model.translate(-centroid.cast<float>().transpose());
+};
 
 int main(int argc, char* argv[])
 {
     filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
+    box(1, Vbox, Fbox);
 
     if (!glfwInit()) { std::cerr<<"Could not initialize glfw\n"; return -1; }
     glfwSetErrorCallback([](int err, const char* msg) { std::cerr<<msg<<'\n'; });
@@ -75,13 +87,15 @@ int main(int argc, char* argv[])
 Usage:
     L,l     toggle wireframe rendering
     Z,z     reset view to look along z-axis
+    R,r     reset model, view, projection to default
     )";
     glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height){
         ::scr_width = width; ::scr_height = height;
         float near, far, ratio, top;
-        near = 0.01; far  = 2.; top  = 1.;
+        near = 0.01; far = 10; top = 10;
         ratio = float(width) / float(height);
-        igl::ortho(-top*ratio, top*ratio, -top, top, near, far, ::proj);
+        igl::ortho(-top*ratio, top*ratio, -top, top, near, far, projection);
+        std::cout<<"projection: "<<projection.matrix()<<'\n';
     });
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
         glViewport(0, 0, width, height);
@@ -99,12 +113,18 @@ Usage:
             case 'Z':
             case 'z': 
                 view.matrix().block(0,0,3,3).setIdentity(); break;
+            case 'R':
+            case 'r':
+                make_centered_model(model);
+                view = Affine3f::Identity() * Translation3f(Vector3f(0,0,-1));
+                projection = Matrix4f::Identity();
+                break;
             default:
                 std::cout<<"Unrecognized key: "<<static_cast<char>(codepoint)<<'\n';
                 break;
         }
     });
-    glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods) {
+    glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods){
         mouse_down = action == GLFW_PRESS;
     });
     glfwSetCursorPosCallback(window, [](GLFWwindow* window, double x, double y) {
@@ -120,9 +140,10 @@ Usage:
         }
         mouse_last_x = x;
         mouse_last_y = y;
+        std::cout<<"view: "<<view.matrix()<<'\n';
     });
     glfwSetScrollCallback(window, [](GLFWwindow* window, double xoffset, double yoffset) {
-        view.matrix()(2,3) = min(max(view.matrix()(2,3)+(float)yoffset,-100.0f),-2.0f);
+        view.matrix()(2,3) = min(max(view.matrix()(2,3)+(float)yoffset,-100.0f), 0.f);
     });
 
     
@@ -131,62 +152,45 @@ Usage:
     auto shader = Shader(vspaths, fspaths);
     shader.compile();
 
-    // igl::opengl::vertex_array(V, F, vao, vbo, ebo);
-    // igl::opengl::report_gl_error("vertex_array");
+    {   GLuint vbo, ebo;
+        igl::opengl::vertex_array(V, F, vao, vbo, ebo);
+        igl::opengl::report_gl_error("vertex_array");
+    }
+    make_centered_model(model);
 
-    // std::cout<<"V: \n"<<V.block(0,0,V.rows(),V.cols())<<'\n';
-    // std::cout<<"F: \n"<<F.block(0,0,F.rows(),F.cols())<<'\n';
+    {   GLuint vbo, ebo;
+        igl::opengl::vertex_array(Vbox, Fbox, vao_box, vbo, ebo);
+        igl::opengl::report_gl_error("vertex_array");
+    }
 
-
-    float vertices[] = {
-         0.5f,  0.5f, 0.0f,  // top right
-         0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left 
-    };
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 3,  // first Triangle
-        1, 2, 3   // second Triangle
-    };
-
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0); 
-
-
-
-    glEnable(GL_DEPTH_TEST);  
-    glEnable(GL_CULL_FACE);
+    // glEnable(GL_DEPTH_TEST);
 
     while (!glfwWindowShouldClose(window)) 
     {
         double tic = get_seconds();
-        glClearColor(0.2, 0.2, 0.2, 1.);
+        glClearColor(0.5,0.5,0.5,1.);
         glClear(GL_COLOR_BUFFER_BIT);
 
         shader.compile();
-        // shader.use();
-        glUseProgram(shader.prog_id);
-        shader.set_mat4("proj", ::proj);
-        shader.set_mat4("view", ::view.matrix());
+        shader.use();
+        shader.set_mat4("proj", projection);
+        shader.set_mat4("view", view.matrix());
+        shader.set_mat4("model", model.matrix());
 
-        glBindVertexArray(VAO);
-        // glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        if (wire_frame)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        else
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glBindVertexArray(vao_box);
+        glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (void*)(4*sizeof(GLuint)));
+        glDrawElements(GL_LINES, 8, GL_UNSIGNED_INT, (void*)(8*sizeof(GLuint)));
         glBindVertexArray(0);
  
         glfwSwapBuffers(window);
@@ -194,7 +198,8 @@ Usage:
         sleep_by_fps(60, tic);
     }
 
-    glDeleteVertexArrays(1, &VAO);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteVertexArrays(1, &vao_box);
     glfwDestroyWindow(window);
     glfwTerminate();
     return EXIT_SUCCESS;
