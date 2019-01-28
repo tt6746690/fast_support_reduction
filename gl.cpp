@@ -91,10 +91,15 @@ Usage:
     )";
     glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height){
         ::scr_width = width; ::scr_height = height;
-        float near, far, ratio, top;
-        near = 0.01; far = 10; top = 10;
+        float near, far, ratio, top, left, right, bottom;
+        near = 0.01; 
+        far = 100;
+        top = tan(35./360.*M_PI)*near;
         ratio = float(width) / float(height);
-        igl::ortho(-top*ratio, top*ratio, -top, top, near, far, projection);
+        right = top * ratio;
+        left = -right;
+        bottom = -top;
+        igl::ortho(left, right, bottom, top, near, far, projection);
         std::cout<<"projection: "<<projection.matrix()<<'\n';
     });
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
