@@ -17,6 +17,7 @@
 #include "src/time_utils.h"
 #include "src/print_opengl_info.h"
 #include "src/shader.h"
+#include "src/persp.h"
 #include "src/box.h"
 
 using namespace Eigen;
@@ -42,7 +43,7 @@ bool wire_frame = false;
 bool mouse_down = false;
 
 Affine3f model = Affine3f::Identity();
-Affine3f view = Affine3f::Identity() * Translation3f(Vector3f(0,0,-1));
+Affine3f view = Affine3f::Identity() * Translation3f(Vector3f(0,0,-5));
 Matrix4f projection = Matrix4f::Identity();
 
 const auto make_centered_model = [](Affine3f& model){
@@ -51,6 +52,18 @@ const auto make_centered_model = [](Affine3f& model){
     igl::centroid(V, F, centroid, vol);
     model = Affine3f::Identity();
     model.translate(-centroid.cast<float>().transpose());
+};
+
+
+const auto reshape = [](GLFWwindow* window, int width, int height) {
+    ::scr_width = width; ::scr_height = height;
+    float near = 0.01;
+    float far = 100;
+    float top = tan(35./360.*M_PI)*near;
+    float right = top * (double)::scr_width/(double)::scr_height;
+    float left = -right;
+    float bottom = -top;
+    persp(left, right, bottom, top, near, far, projection);
 };
 
 int main(int argc, char* argv[])
@@ -89,26 +102,22 @@ Usage:
     Z,z     reset view to look along z-axis
     R,r     reset model, view, projection to default
     )";
-    glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height){
-        ::scr_width = width; ::scr_height = height;
-        float near, far, ratio, top, left, right, bottom;
-        near = 0.01; 
-        far = 100;
-        top = tan(35./360.*M_PI)*near;
-        ratio = float(width) / float(height);
-        right = top * ratio;
-        left = -right;
-        bottom = -top;
-        igl::ortho(left, right, bottom, top, near, far, projection);
-        std::cout<<"projection: "<<projection.matrix()<<'\n';
-    });
+    glfwSetWindowSizeCallback(window, reshape);
+    {
+        int width_window, height_window;
+        glfwGetWindowSize(window, &width_window, &height_window);
+        reshape(window,width_window,height_window);
+    }
+
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) {
         glViewport(0, 0, width, height);
     });
+
     glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
         if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
             glfwSetWindowShouldClose(window,true);
     });
+
     glfwSetCharModsCallback(window, [](GLFWwindow* window, unsigned int codepoint, int mods) {
         std::cout<<"key: "<<static_cast<char>(codepoint)<<'\n';
         switch(codepoint) {
@@ -121,7 +130,7 @@ Usage:
             case 'R':
             case 'r':
                 make_centered_model(model);
-                view = Affine3f::Identity() * Translation3f(Vector3f(0,0,-1));
+                view = Affine3f::Identity() * Translation3f(Vector3f(0,0,-5));
                 projection = Matrix4f::Identity();
                 break;
             default:
@@ -145,7 +154,6 @@ Usage:
         }
         mouse_last_x = x;
         mouse_last_y = y;
-        std::cout<<"view: "<<view.matrix()<<'\n';
     });
     glfwSetScrollCallback(window, [](GLFWwindow* window, double xoffset, double yoffset) {
         view.matrix()(2,3) = min(max(view.matrix()(2,3)+(float)yoffset,-100.0f), 0.f);
