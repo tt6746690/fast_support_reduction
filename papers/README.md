@@ -96,8 +96,8 @@
             + cages: a collection of simplices, requiring that simplices transform linearly as the cage vertices are translated.
             + joint shared by connecting bones
         + linear blending
-            + `p' = \sum_{j=1:m} = w_j(p) T_j p`
-        + find `w_j(p)` by
+            + $p' = \sum_{j=1:m} = w_j(p) T_j p$
+        + find $w_j(p)$ by
             + minimize squared laplacian of weights over the volumne
             + subject to 
                 + weights on points on handles equals 1

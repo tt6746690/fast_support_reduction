@@ -25,6 +25,7 @@ option(LIBIGL_WITH_OPENGL            "Use OpenGL"         ON)
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
 option(LIBIGL_WITH_TETGEN            "Use Tetgen"         ON)
+option(LIBIGL_WITH_PNG               "Use PNG"            ON)
 find_package(LIBIGL REQUIRED QUIET)
 
 # minitrace
@@ -52,7 +53,7 @@ endif()
 # target_link_libraries(support_reduction igl::core igl::opengl_glfw)
 
 add_executable(gl gl.cpp ${SRCFILES})
-target_link_libraries(gl igl::core igl::opengl_glfw)
+target_link_libraries(gl igl::core igl::opengl_glfw igl::png)
 
 if(WITH_VISUALIZE)
     add_definitions(-DVISUALIZE)

@@ -53,6 +53,24 @@ process launch -- hand 1 1 1 45 20 100 1 10 0
 ```
 
 
+#### self-intersection with shader
+
+
+GPU-accelerated evaluation of self-intersection volume
+    + problem
+        + given a water-tight mesh and projection direction
+        + framebuffer width and height, for controlling how accurate the computation is
+        + return self-intersecting volume
+    + preparation
+        + find bounding box of the mesh
+        + determine orthographic projection around the bounding box of the mesh
+    Peel off front-most fragment of mesh along an orthographic viewing direction
+    aligned with the inverse of printing direction (i.e. projection direction).
+    The near/far plane of orthographic projection are faces of the bounding box of the mesh.
+    For each fragment, record 
+
+
+
 
 #### Readings
 

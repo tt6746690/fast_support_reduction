@@ -79,7 +79,14 @@
         "thread": "cpp",
         "tuple": "cpp",
         "unordered_set": "cpp",
-        "geometry": "cpp"
+        "geometry": "cpp",
+        "sparsecore": "cpp",
+        "superlusupport": "cpp",
+        "bvh": "cpp",
+        "fft": "cpp",
+        "numericaldiff": "cpp",
+        "hash_map": "cpp"
     },
-    "C_Cpp.errorSquiggles": "Disabled"
+    "C_Cpp.errorSquiggles": "Disabled",
+    "C_Cpp.configurationWarnings": "Disabled"
 }
