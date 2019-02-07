@@ -38,9 +38,17 @@ include_directories(libs/Clara/include)
 
 # source files
 
+include_directories(src)
+include_directories(src/opengl)
+include_directories(src/utils)
+
 file(GLOB SRCFILES 
     src/*.h
-    src/*.cpp)
+    src/*.cpp
+    src/opengl/*h
+    src/opengl/*cpp
+    src/utils/*h
+    src/utils/*cpp)
 
 # executables
 

@@ -12,9 +12,9 @@
 #include <igl/unproject_onto_mesh.h>
 #include <igl/boundary_loop.h>
 
-#include "src/arap_energy.h"
-#include "src/overhang_energy.h"
-#include "src/self_intersection.h"
+#include "arap_energy.h"
+#include "overhang_energy.h"
+#include "self_intersection.h"
 
 #include <iostream>
 #include <cmath>

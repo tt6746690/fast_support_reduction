@@ -15,18 +15,18 @@
 #include <string>
 #include <cmath>
 
-#include "src/time_utils.h"
-#include "src/print_opengl_info.h"
-#include "src/Shader.h"
-#include "src/persp.h"
-#include "src/wrap_igl.h"
-#include "src/primitives.h"
-#include "src/vertex_array_with_texture.h"
-#include "src/init_render_to_texture.h"
-#include "src/depthbuffer_to_png.h"
-#include "src/camera.h"
-#include "src/Line.h"
-#include "src/Box.h"
+#include "time_utils.h"
+#include "print_opengl_info.h"
+#include "Shader.h"
+#include "persp.h"
+#include "wrap_igl.h"
+#include "primitives.h"
+#include "vertex_array_with_texture.h"
+#include "init_render_to_texture.h"
+#include "depthbuffer_to_png.h"
+#include "camera.h"
+#include "Line.h"
+#include "Box.h"
 
 using namespace Eigen;
 using namespace std;

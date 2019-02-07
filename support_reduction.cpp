@@ -14,9 +14,9 @@
 #include <igl/normalize_row_sums.h>
 #include <igl/deform_skeleton.h>
 
-#include "src/reduce_support.h"
-#include "src/overhang_energy.h"
-#include "src/minitrace.h"
+#include "reduce_support.h"
+#include "overhang_energy.h"
+#include "minitrace.h"
 
 #include <cstdio>
 #include <iostream>
