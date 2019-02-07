@@ -23,6 +23,8 @@
 #include "src/wrap_igl.h"
 #include "src/primitives.h"
 #include "src/vertex_array_with_texture.h"
+#include "src/init_render_to_texture.h"
+#include "src/depthbuffer_to_png.h"
 
 using namespace Eigen;
 using namespace std;
@@ -251,41 +253,9 @@ Usage:
     vertex_array(Vbox, Fbox, vao_box);
     vertex_array_texture(Vscreen, Fscreen, Tscreen, vao_screen);
 
-    glEnable(GL_DEPTH_TEST);
-
-    // framebuffer
-
-    // GLuint fbo, tex_id, depth_id;
-    // igl::opengl::init_render_to_texture(scr_width, scr_height, true, tex_id, fbo, depth_id);
-
-    unsigned int fbo;
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);  
-
-    unsigned int tex_id;
-    glGenTextures(1, &tex_id);
-    glBindTexture(GL_TEXTURE_2D, tex_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, ren_width, ren_height, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    float border_color[] = {1,1,1,1};
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex_id, 0);
-
-    unsigned int rbo;
-    glGenRenderbuffers(1, &rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo); 
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, ren_width, ren_height);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        std::cerr<<"Error Framebuffer: framebuffer is not complete!\n";
-    }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // create framebuffer
+    GLuint fbo, tex_id, dtex_id;
+    init_render_to_texture(scr_width, scr_height, fbo, tex_id, dtex_id);
 
 
     Matrix4f ortho_proj;
@@ -296,6 +266,10 @@ Usage:
     igl::ortho(left, right, bottom, top, near, far, ortho_proj);
     Affine3f ortho_view = Affine3f::Identity() * Translation3f(Vector3f(0, 0, 0));
 
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);   // d_frag < d_fbo
+    glDepthRange(0, 1);     // linearly map: [-1, 1] (normalized coordinates) -> [0, 1] (screen)
 
     while (!glfwWindowShouldClose(window)) 
     {
@@ -304,7 +278,8 @@ Usage:
         // off-screen rendering to texture
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         glViewport(0, 0, ren_width, ren_height);     // need to set this !
-        glClearColor(0.1,0.1,0.1,1);
+        glClearColor(0.1, 0.1, 0.1, 1.);
+        glClearDepth(1.);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -315,15 +290,17 @@ Usage:
         glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        if (!save_png) {
-            igl::png::render_to_png("out.png", ren_width, ren_height, true, false);
+        if (save_png) {
+            igl::png::render_to_png("color.png", ren_width, ren_height, true, false);
+            depthbuffer_to_png("depth.png", ren_width, ren_height);
             save_png = false;
         }
 
         //  default framebuffer
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         set_viewport(window);
-        glClearColor(0.5,0.5,0.5,1.);
+        glClearColor(0.5, 0.5, 0.5, 1.);
+        glClearDepth(1.);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         if (wire_frame)
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -347,18 +324,16 @@ Usage:
         glDrawElements(GL_LINES, 8, GL_UNSIGNED_INT, (void*)(8*sizeof(GLuint)));
         glBindVertexArray(0);
     
-
         screen_shader.compile();
         screen_shader.use();
         screen_shader.set_mat4("proj",  projection);
         screen_shader.set_mat4("view",  view.matrix());
         screen_shader.set_mat4("model", (model*Translation3f(Vector3f(0,0,-2))).matrix());
-
         screen_shader.set_int("orthoproj_tex", 0);
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex_id);
+        glBindTexture(GL_TEXTURE_2D, dtex_id);
         glBindVertexArray(vao_screen);
         glDrawElements(GL_TRIANGLES, Fscreen.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);

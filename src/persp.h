@@ -2,17 +2,17 @@
 
 #include <Eigen/Core>
 
-// Implementation of the deprecated glOrtho function.
+// Perspective projection matrix
 //
 // Inputs:
-//   left  coordinate of left vertical clipping plane
-//   right  coordinate of right vertical clipping plane
-//   bottom  coordinate of bottom vertical clipping plane
-//   top  coordinate of top vertical clipping plane
-//   nearVal  distance to near plane
-//   farVal  distance to far plane
+//   left       coordinate of left vertical clipping plane
+//   right      coordinate of right vertical clipping plane
+//   bottom     coordinate of bottom vertical clipping plane
+//   top        coordinate of top vertical clipping plane
+//   near       distance to near plane
+//   far        distance to far plane
 // Outputs:
-//   P  4x4 perspective matrix
+//   P          4x4 perspective matrix
 template <typename DerivedP>
 void persp(
     const typename DerivedP::Scalar left,

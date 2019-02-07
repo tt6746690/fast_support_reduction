@@ -56,7 +56,7 @@ process launch -- hand 1 1 1 45 20 100 1 10 0
 #### self-intersection with shader
 
 
-GPU-accelerated evaluation of self-intersection volume
++ GPU-accelerated evaluation of self-intersection volume
     + problem
         + given a water-tight mesh and projection direction
         + framebuffer width and height, for controlling how accurate the computation is

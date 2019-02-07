@@ -3,13 +3,19 @@
 ###  Check `abstract.pdf`
 
 
-
 ```
 # http://www.citethisforme.com/
 #   1. set format to biblatex
 #   2. copy -> paste to `references.bib`
 #   3. open vim and type `:%s/\[break\]\s/\r/g`
 ```
+
+
+### resources
+
+
++ a nice tutorial on [framebuffer internals](http://www.songho.ca/opengl/gl_fbo.html)
++ a nice tutorial on [rendering depth to texture](https://paroj.github.io/gltut/Positioning/Tut05%20Overlap%20and%20Depth%20Buffering.html)
 
 
 ---
@@ -30,26 +36,6 @@ build/support_reduction woody-cross 10 1 20 0.0001 1 1
 ![](2018-11-26-23-04-03.png)
 + optimized overhang energy
 
-
-##### 3d
-
-```
-build/support_reduction hand 10 1 20 0.0001 1 1
-```
-
-```
-# look_moon
-build/support_reduction bb-bunny 10 100 20 45 60 0 0.4 0 0
-
-# the new .tgf, good result! one arm up, one arm down
-build/support_reduction bb-bunny 5 50 50 45 60 50 0.5 1 0
-
-# both arm up 
-build/support_reduction bb-bunny 5 50 50 45 90 20 30 1 0
-
-# farsee
-build/support_reduction bb-bunny 5 120 200 50 90 20 40 0.5 0
-```
 
 
 ### presentation 
