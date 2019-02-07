@@ -40,6 +40,24 @@ void line(
     Eigen::PlainObjectBase<DerivedF>& F);
 
 
+// generate vertices and edges and texture coordinates for a quad
+//
+//      vertex_array_texture(V, F, T, vao);
+//      ...
+//      glBindVertexArray(vao);
+//      glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
+//      glBindVertexArray(0);
+template <
+    typename DerivedV,
+    typename DerivedF,
+    typename DerivedT>
+void textured_quad(
+    Eigen::PlainObjectBase<DerivedV>& V,
+    Eigen::PlainObjectBase<DerivedF>& F,
+    Eigen::PlainObjectBase<DerivedT>& T);
+
+
+
 
 
 // implementation 
@@ -54,18 +72,18 @@ void box(
     Eigen::PlainObjectBase<DerivedF>& F)
 {
     auto h = static_cast<typename DerivedV::Scalar>(l / 2);
-    V.resize(8, 4);
+    V.resize(8, 3);
     F.resize(4, 4);
 
     V <<
-        -h, -h, -h, 1,
-        h, -h, -h, 1,
-        h, h, -h, 1,
-        -h, h, -h, 1,
-        -h, -h, h, 1,
-        h, -h, h, 1,
-        h, h, h, 1,
-        -h, h, h, 1;
+        -h, -h, -h,
+        h, -h, -h,
+        h, h, -h,
+        -h, h, -h,
+        -h, -h, h,
+        h, -h, h,
+        h, h, h,
+        -h, h, h;
 
     F <<
         0, 1, 2, 3, // floor 
@@ -90,4 +108,30 @@ void line(
     V << start.transpose(),
          end.transpose();
     F << 0, 1;
+}
+
+
+
+template <
+    typename DerivedV,
+    typename DerivedF,
+    typename DerivedT>
+void textured_quad(
+    Eigen::PlainObjectBase<DerivedV>& V,
+    Eigen::PlainObjectBase<DerivedF>& F,
+    Eigen::PlainObjectBase<DerivedT>& T)
+{
+    V.resize(4, 3);
+    T.resize(4, 2);
+    F.resize(2, 3);
+    V << -1, -1, -1,
+        -1, 1, -1,
+        1, 1,  -1,
+        1, -1, -1;
+    T << 0, 0,
+        0, 1,
+        1, 1,
+        1, 0;
+    F << 0, 1, 2,
+        0, 2, 3;
 }

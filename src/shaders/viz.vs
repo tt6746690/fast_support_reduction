@@ -10,6 +10,6 @@ uniform mat4 proj;
 
 void main()
 {
-    pos_fs_in = proj * view * model * vec4(pos_vs_in, 1);
+    pos_fs_in = proj * view * model * vec4(pos_vs_in,1);
     gl_Position = pos_fs_in;
 }

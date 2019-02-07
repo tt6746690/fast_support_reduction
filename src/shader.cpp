@@ -1,4 +1,4 @@
-#include "shader.h"
+#include "Shader.h"
 
 #include <iostream>
 
@@ -9,11 +9,11 @@
 Shader::Shader(
     const shader_paths& vertex_shader_paths,
     const shader_paths& fragment_shader_paths)
-    : prog_id(0),
+    :   prog_id(0),
         time_of_prev_compilation(0),
         vertex_shader_paths(vertex_shader_paths),
         fragment_shader_paths(fragment_shader_paths)
-{}
+    {}
 
 
 void Shader::use() {

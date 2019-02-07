@@ -2,7 +2,6 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <igl_stb_image.h>
 
 #include <igl/png/render_to_png.h>
 #include <igl/readOBJ.h>
@@ -18,13 +17,16 @@
 
 #include "src/time_utils.h"
 #include "src/print_opengl_info.h"
-#include "src/shader.h"
+#include "src/Shader.h"
 #include "src/persp.h"
 #include "src/wrap_igl.h"
 #include "src/primitives.h"
 #include "src/vertex_array_with_texture.h"
 #include "src/init_render_to_texture.h"
 #include "src/depthbuffer_to_png.h"
+#include "src/camera.h"
+#include "src/Line.h"
+#include "src/Box.h"
 
 using namespace Eigen;
 using namespace std;
@@ -45,10 +47,10 @@ const auto getfilepath = [](const string& name, const string& ext){
     return data_dir + name + "." + ext; 
 };
 
-MatrixXf V, Vbox, Vscreen, Tscreen;
-MatrixXi F, Fbox, Fscreen;
+MatrixXf V, Vscreen, Tscreen;
+MatrixXi F, Fscreen;
 
-GLuint vao, vao_box, vao_screen;
+GLuint vao, vao_screen;
 
 bool wire_frame = false;
 bool orthographic = false;
@@ -130,24 +132,13 @@ int main(int argc, char* argv[])
     filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
-    box(1, Vbox, Fbox);
-
-    Vscreen.resize(4, 3);
-    Tscreen.resize(4, 2);
-    Fscreen.resize(2, 3);
-    Vscreen << -1, -1, -1,
-                -1, 1, -1,
-                1, 1,  -1,
-                1, -1, -1;
-    Tscreen << 0, 0,
-               0, 1,
-               1, 1,
-               1, 0;
-    Fscreen << 0, 1, 2,
-                0, 2, 3;
-
     normalize_coordinate(V);
-    normalize_coordinate(Vbox);
+
+    textured_quad(Vscreen, Fscreen, Tscreen);
+    Line<float> xaxis(Vector3f(-1,0,0), Vector3f(5,0,0));
+    Line<float> yaxis(Vector3f(0,-1,0), Vector3f(0,5,0));
+    Box<float> unitbox(1.);
+
 
     if (!glfwInit()) { std::cerr<<"Could not initialize glfw\n"; return -1; }
     glfwSetErrorCallback([](int err, const char* msg) { std::cerr<<msg<<'\n'; });
@@ -178,6 +169,7 @@ Usage:
     Z,z     reset view to look along z-axis
     R,r     reset model, view, projection to default
     P,p     toggle orthographic viewings
+    S,s     save color/depth to .png
     )";
     glfwSetWindowSizeCallback(window, reshape);
     reshape_current(window);
@@ -248,10 +240,13 @@ Usage:
     peel_shader.compile();
     viz_shader.compile();
     screen_shader.compile();
-    
+
+
     vertex_array(V, F, vao);
-    vertex_array(Vbox, Fbox, vao_box);
     vertex_array_texture(Vscreen, Fscreen, Tscreen, vao_screen);
+    xaxis.create_vertex_array();
+    yaxis.create_vertex_array();
+    unitbox.create_vertex_array();
 
     // create framebuffer
     GLuint fbo, tex_id, dtex_id;
@@ -264,7 +259,7 @@ Usage:
     right = top * (double)::scr_width/(double)::scr_height;
     left = -right; bottom = -top;
     igl::ortho(left, right, bottom, top, near, far, ortho_proj);
-    Affine3f ortho_view = Affine3f::Identity() * Translation3f(Vector3f(0, 0, 0));
+    Affine3f ortho_view = lookat_view(Vector3f(0,0,-1), Vector3f(0,0,0), Vector3f(0,1,0));
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -317,19 +312,16 @@ Usage:
         glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        glBindVertexArray(vao_box);
-        glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, 0);
-        glDrawElements(GL_LINE_LOOP, 4, GL_UNSIGNED_INT, (void*)(4*sizeof(GLuint)));
-        glDrawElements(GL_LINES, 8, GL_UNSIGNED_INT, (void*)(8*sizeof(GLuint)));
-        glBindVertexArray(0);
-    
+        xaxis.draw();
+        yaxis.draw();
+        unitbox.draw();
+
         screen_shader.compile();
         screen_shader.use();
         screen_shader.set_mat4("proj",  projection);
         screen_shader.set_mat4("view",  view.matrix());
         screen_shader.set_mat4("model", (model*Translation3f(Vector3f(0,0,-2))).matrix());
-        screen_shader.set_int("orthoproj_tex", 0);
+        screen_shader.set_int("depth_texture", 0);
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glActiveTexture(GL_TEXTURE0);
@@ -346,7 +338,6 @@ Usage:
 
     glDeleteFramebuffers(1, &fbo);
     glDeleteVertexArrays(1, &vao);
-    glDeleteVertexArrays(1, &vao_box);
     glfwDestroyWindow(window);
     glfwTerminate();
     return EXIT_SUCCESS;

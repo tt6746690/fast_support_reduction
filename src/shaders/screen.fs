@@ -4,9 +4,10 @@
 in  vec2 tex_coord_fs_in;
 out vec4 color;
 
-uniform sampler2D orthoproj_tex;
+uniform sampler2D depth_texture;
 
 void main()
 {
-    color = texture(orthoproj_tex, tex_coord_fs_in);
+    float d = texture(depth_texture, tex_coord_fs_in).s;
+    color = vec4(d, d, d, 1);
 }
