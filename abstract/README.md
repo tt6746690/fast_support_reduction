@@ -11,7 +11,7 @@
 ```
 
 
-### resources
+#### resources
 
 
 + a nice tutorial on [framebuffer internals](http://www.songho.ca/opengl/gl_fbo.html)
@@ -21,9 +21,23 @@
 + webpage with some simple [objs](https://people.sc.fsu.edu/~jburkardt/data/obj/cube.obj)
 
 
----
 
-#### Profiling 
+#### self-intersection method
+
+
++ prepare
+    + 2 framebuffer with depth buffer attached as textures for current and previous rendering passes
+    + 1 framebuffer with depth buffer attached as renderbuffer to keep track of accumulated self-intersection distance / fragment (use `gl_FragDepth` in fragshader)
++ `peel_shader`
+    + depth peeling by `discard`-ing fragments that is less than or equal to max depth (stored in texture from previous pass rendered depth buffer) while enabling depth test
+    + use `gl_FrontFacing` to determine inside/outside
++ 
+
+
+
+
+
+#### Profiling
 
 ##### 2d
 

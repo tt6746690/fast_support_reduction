@@ -44,6 +44,9 @@ void Shader::set_bool(const std::string& name, bool value) const {
 void Shader::set_int(const std::string& name, int value) const {
     glUniform1i(glGetUniformLocation(prog_id, name.c_str()), value);
 }
+void Shader::set_float(const std::string& name, float value) const {
+    glUniform1f(glGetUniformLocation(prog_id, name.c_str()), value);
+}
 void Shader::set_vec3(const std::string& name,
     Eigen::Matrix<float, 3, 1, Eigen::ColMajor> value) const {
     glUniform3fv(glGetUniformLocation(prog_id, name.c_str()), 1, value.data());
