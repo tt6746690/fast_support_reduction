@@ -9,6 +9,10 @@
 #include <igl/centroid.h>
 #include <igl/opengl/report_gl_error.h>
 #include <igl/opengl/init_render_to_texture.h>
+#include <igl/look_at.h>
+#include <igl/readOBJ.h>
+#include <igl/writeOBJ.h>
+
 
 #include <iostream>
 #include <vector>
@@ -47,8 +51,8 @@ const auto getfilepath = [](const string& name, const string& ext){
     return data_dir + name + "." + ext; 
 };
 
-MatrixXf V, Vscreen, Tscreen;
-MatrixXi F, Fscreen;
+MatrixXf V, Vscreen, Tscreen, V1;
+MatrixXi F, Fscreen, F1;
 
 GLuint vao, vao_screen;
 
@@ -61,7 +65,7 @@ Affine3f model = Affine3f::Identity();
 Affine3f view = Affine3f::Identity() * Translation3f(Vector3f(0, 0, -10));
 Matrix4f projection = Matrix4f::Identity();
 
-float half = 1.5;
+float half = 1.0;
 
 const auto set_view = [](Affine3f& view) {
     if (orthographic) {
@@ -133,6 +137,7 @@ int main(int argc, char* argv[])
     filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
+
     normalize_coordinate(V);
 
     textured_quad(Vscreen, Fscreen, Tscreen);
@@ -143,12 +148,16 @@ int main(int argc, char* argv[])
 
     Matrix4f ortho_proj;
     float near, far, top, right, left, bottom;
-    near = -half; far = half; top = half;
-    right = top * (double)::scr_width/(double)::scr_height;
+    near = 0; far = 2*half; top = half; // Remember we are in camera coordinates!
+    right = half;
     left = -right; bottom = -top;
     igl::ortho(left, right, bottom, top, near, far, ortho_proj);
-    // Affine3f ortho_view = lookat_view(Vector3f(0,0,0.5*near), Vector3f(0,0,0), Vector3f(0,1,0));
-    Affine3f ortho_view = Affine3f::Identity();
+
+    Affine3f ortho_view;
+    igl::look_at(Vector3f(0,0,-half), Vector3f(0,0,0), Vector3f(0,1,0), ortho_view.matrix());
+
+    std::cout << ortho_view.matrix() << std::endl;
+    // Affine3f ortho_view = Affine3f::Identity();
 
     if (!glfwInit()) { std::cerr<<"Could not initialize glfw\n"; return -1; }
     glfwSetErrorCallback([](int err, const char* msg) { std::cerr<<msg<<'\n'; });
@@ -266,10 +275,10 @@ Usage:
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LESS);   // d_frag < d_fbo
-    glDepthRange(0, 1);     // linearly map: [-1, 1] (normalized coordinates) -> [0, 1] (screen)
+    glDepthRange(0, 1.0);     // linearly map: [-1, 1] (normalized coordinates) -> [0, 1] (screen)
     glDisable(GL_CULL_FACE);
 
-    while (!glfwWindowShouldClose(window)) 
+    while (!glfwWindowShouldClose(window))
     {
         double tic = get_seconds();
 
@@ -283,7 +292,7 @@ Usage:
 
         peel_shader.compile();
         peel_shader.use();
-        peel_shader.set_mat4("model_view_proj", (ortho_proj*ortho_view*model).matrix());
+        peel_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);

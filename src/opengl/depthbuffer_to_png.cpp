@@ -2,6 +2,7 @@
 
 #include "depthbuffer_to_png.h"
 #include <igl_stb_image.h>
+#include <iostream>
 
 bool depthbuffer_to_png(
     const std::string png_file,
