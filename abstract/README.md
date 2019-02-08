@@ -16,6 +16,9 @@
 
 + a nice tutorial on [framebuffer internals](http://www.songho.ca/opengl/gl_fbo.html)
 + a nice tutorial on [rendering depth to texture](https://paroj.github.io/gltut/Positioning/Tut05%20Overlap%20and%20Depth%20Buffering.html)
++ user-defined clipping via [`gl_ClipDistance`](https://www.khronos.org/opengl/wiki/Vertex_Post-Processing)
+    + clip points beyond a plane
++ webpage with some simple [objs](https://people.sc.fsu.edu/~jburkardt/data/obj/cube.obj)
 
 
 ---

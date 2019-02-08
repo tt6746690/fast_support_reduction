@@ -61,9 +61,12 @@ Affine3f model = Affine3f::Identity();
 Affine3f view = Affine3f::Identity() * Translation3f(Vector3f(0, 0, -10));
 Matrix4f projection = Matrix4f::Identity();
 
+float half = 1.5;
+
 const auto set_view = [](Affine3f& view) {
     if (orthographic) {
-        view = Affine3f::Identity() * Translation3f(Vector3f(0, 0, 0));
+        // view = lookat_view(Vector3f(0,0,half), Vector3f(0,0,0), Vector3f(0,1,0));
+        view = Affine3f::Identity();
     } else {
         view = Affine3f::Identity() * Translation3f(Vector3f(0, 0, -10));
     }
@@ -103,12 +106,10 @@ const auto reshape = [](GLFWwindow* window, int width, int height) {
     ::scr_width = width; ::scr_height = height;
     float near, far, top, bottom, left, right;
     if (orthographic) {
-        near = -1;
-        far  = 1;
-        top  = 1;
+        float near, far, top, right, left, bottom;
+        near = -half; far = half; top = half;
         right = top * (double)::scr_width/(double)::scr_height;
-        left = -right;
-        bottom = -top;
+        left = -right; bottom = -top;
         igl::ortho(left, right, bottom, top, near, far, projection);
     } else {
         near = 0.01;
@@ -139,6 +140,15 @@ int main(int argc, char* argv[])
     Line<float> yaxis(Vector3f(0,-1,0), Vector3f(0,5,0));
     Box<float> unitbox(1.);
 
+
+    Matrix4f ortho_proj;
+    float near, far, top, right, left, bottom;
+    near = -half; far = half; top = half;
+    right = top * (double)::scr_width/(double)::scr_height;
+    left = -right; bottom = -top;
+    igl::ortho(left, right, bottom, top, near, far, ortho_proj);
+    // Affine3f ortho_view = lookat_view(Vector3f(0,0,0.5*near), Vector3f(0,0,0), Vector3f(0,1,0));
+    Affine3f ortho_view = Affine3f::Identity();
 
     if (!glfwInit()) { std::cerr<<"Could not initialize glfw\n"; return -1; }
     glfwSetErrorCallback([](int err, const char* msg) { std::cerr<<msg<<'\n'; });
@@ -253,18 +263,11 @@ Usage:
     init_render_to_texture(scr_width, scr_height, fbo, tex_id, dtex_id);
 
 
-    Matrix4f ortho_proj;
-    float near, far, top, right, left, bottom;
-    near = -1; far  = 1; top  = 1;
-    right = top * (double)::scr_width/(double)::scr_height;
-    left = -right; bottom = -top;
-    igl::ortho(left, right, bottom, top, near, far, ortho_proj);
-    Affine3f ortho_view = lookat_view(Vector3f(0,0,-1), Vector3f(0,0,0), Vector3f(0,1,0));
-
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LESS);   // d_frag < d_fbo
     glDepthRange(0, 1);     // linearly map: [-1, 1] (normalized coordinates) -> [0, 1] (screen)
+    glDisable(GL_CULL_FACE);
 
     while (!glfwWindowShouldClose(window)) 
     {

@@ -17,9 +17,9 @@ Eigen::Transform<Scalar, 3, Eigen::Affine> lookat_view(
         const Eigen::Matrix<Scalar, 3, 1> target,
         const Eigen::Matrix<Scalar, 3, 1> up)
 {
-    auto z = (eye - target).normalized();
+    auto z = (eye-target).normalized();
     auto x = (up.cross(z)).normalized();
-    auto y = (z.cross(x)).normalized();
+    auto y = z.cross(x);
 
     using Affine3S = Eigen::Transform<Scalar, 3, Eigen::Affine>;
     Affine3S view = Affine3S::Identity();
