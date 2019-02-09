@@ -13,20 +13,17 @@ mkdir build && cd build
 # brew install ninja
 cmake -GNinja ..
 
-# run 
-# build/support_reduction 
-#       filename \
-#       n_fixed_bones \
-#       pso_iters \
-#       pos_population \
-#       alpha_max \
-#       rotation_angle \
-#       c_arap \
-#       c_overhang \
-#       c_intersect \
-#       rotate_model
-build/support_reduction bb-bunny 5 1 1 50 90 20 40 0.5 0
-
+# run (Clara remember flags!)
+./build/support_reduction \
+--data_dir data/ \
+--filename bb-bunny \
+--n_fixed_bones 5 \
+--pso_iters 30 \
+--pso_population 40 \
+--rotation_angle 50 \
+--c_arap 90 \
+--c_overhang 20 \
+--c_intersect 40 \
 
 # debugging
 lldb build/support_reduction

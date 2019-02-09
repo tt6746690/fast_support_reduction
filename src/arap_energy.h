@@ -153,7 +153,6 @@ double arap_energy(
     const Eigen::SparseMatrix<ScalarK>& K,
     bool is3d)
 {
-    MTR_SCOPE_FUNC();
     typedef typename DerivedT::Scalar ScalarT;
     typedef Eigen::Matrix<ScalarT, Eigen::Dynamic, Eigen::Dynamic> MatrixXT;
     typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
@@ -189,10 +188,15 @@ double arap_energy(
     // E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
     double obj = 0;
     int a, b;
-    double coeff;
+    double coeff, diff;
     Matrix3T R_a;
     Vector3T new_vec, old_vec, old_vec_T, trans_old_vec, diff_vec;
-    for (int i = 0; i < F.rows(); i++) {
+
+    int i;
+
+    MTR_BEGIN("C++", "arap");
+    #pragma omp parallel for reduction(+:obj)
+    for (i = 0; i < F.rows(); i++) {
         for (auto p : edge_indices) {
             a = F(i, p.first);
             b = F(i, p.second);
@@ -203,11 +207,11 @@ double arap_energy(
             coeff = L.coeff(a, b);
             trans_old_vec = R_a * old_vec_T;
             diff_vec = new_vec - trans_old_vec;
-            double diff = coeff * diff_vec.norm() * diff_vec.norm() * 1.0 / 6;
+            diff = coeff * diff_vec.norm() * diff_vec.norm() * 1.0 / 6;
             obj += diff;
         }
     }
-
+    MTR_END("C++", "arap");
 
     return obj;
 }
