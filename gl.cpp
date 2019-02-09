@@ -271,18 +271,12 @@ Usage:
     // init_render_to_texture(ren_width, ren_height, fbo, tex_id, dtex_id);
 
     GLuint fbo[2], tex_id[2], dtex_id[2];
+    GLuint ren_fbo[2], ren_tex[2], ren_depth_tex[2];
     for (int i = 0; i < 2; ++i) {
         init_render_to_texture(ren_width, ren_height, fbo[i], tex_id[i], dtex_id[i]);
+        igl::opengl::init_render_to_texture(ren_width, ren_height, false, ren_tex[i], ren_fbo[i], ren_depth_tex[i]);
     }
 
-    GLuint ren_fbo, ren_tex, ren_depth_tex;
-    igl::opengl::init_render_to_texture(ren_width, ren_height, false, ren_tex, ren_fbo, ren_depth_tex);
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-    glDepthFunc(GL_LESS);     // d_frag < d_fbo
-    glDepthRange(0, 1.0);     // linearly map: [-1, 1] (normalized coordinates) -> [0,1] (screen)
-    glDisable(GL_CULL_FACE);
 
 
     const auto depth_peel = [&]() {
@@ -290,6 +284,22 @@ Usage:
         int which_pass;
         GLuint query_id, any_samples_passed = 0;
         glGenQueries(1, &query_id);
+
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);     // d_frag < d_fbo
+        glDepthRange(0, 1.0);     // linearly map: [-1, 1] (normalized coordinates) -> [0,1] (screen)
+        glDisable(GL_CULL_FACE);
+        glViewport(0, 0, ren_width, ren_height);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        //  initialize buffer storing accumulated self-intersecting volume to zero
+        for (int i = 0; i < 2; ++i) {
+            glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[i]);
+            glClearColor(0,0,0,1.);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
 
         for (int pass = 0; pass < max_passes; ++pass) 
         {
@@ -299,36 +309,55 @@ Usage:
                 default: which_pass = 2;
             }
 
-            // compute self-intersection, before depth-peeling 
+            // compute self-intersection, 
+            //      this step comes before depth-peeling so that we have information of 
+            //      (1) depth (2) normal orientation for the most recently peeled 2 layers
 
-            // if (which_pass == 2) {
+            if (which_pass == 2) {
                 
-            //     glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo);
-            //     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
+                glDepthFunc(GL_ALWAYS);
 
-            //     intersection_shader.compile();
-            //     intersection_shader.use();
-            //     intersection_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
-            //     intersection_shader.set_int("which_pass", which_pass);
-            //     intersection_shader.set_float("width", ren_width);
-            //     intersection_shader.set_float("height", ren_height);
+                intersection_shader.compile();
+                intersection_shader.use();
+                intersection_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
+                intersection_shader.set_int("which_pass", which_pass);
+                intersection_shader.set_float("width", ren_width);
+                intersection_shader.set_float("height", ren_height);
 
-            //     peel_shader.set_int("prev_depth_texture", 0);
-            //     glActiveTexture(GL_TEXTURE0+0);
-            //     glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%2]);
-            //     peel_shader.set_int("prevprev_depth_texture", 1);
-            //     glActiveTexture(GL_TEXTURE0+1);
-            //     glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-2)%2]);
+                peel_shader.set_int("prev_depth_texture", 0);
+                glActiveTexture(GL_TEXTURE0+0);
+                glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%2]);
+                peel_shader.set_int("prevprev_depth_texture", 1);
+                glActiveTexture(GL_TEXTURE0+1);
+                glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-2)%2]);
+                peel_shader.set_int("prev_color_texture", 2);
+                glActiveTexture(GL_TEXTURE0+2);
+                glBindTexture(GL_TEXTURE_2D, tex_id[(pass-1)%2]);
+                peel_shader.set_int("prevprev_color_texture", 3);
+                glActiveTexture(GL_TEXTURE0+3);
+                glBindTexture(GL_TEXTURE_2D, tex_id[(pass-2)%2]);
+                peel_shader.set_int("acc_color_texture", 4);
+                glActiveTexture(GL_TEXTURE0+4);
+                glBindTexture(GL_TEXTURE_2D, ren_tex[(pass-1)%2]);
 
+                glBindVertexArray(vao);
+                glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
+                glBindVertexArray(0);
 
-            // }
+                if (save_png) {
+                    igl::png::render_to_png(
+                        string("intersection_color_"+to_string(pass)+".png"), ren_width, ren_height, true, false);
+                }
+
+            }
 
             // depth peeling
 
             glBeginQuery(GL_ANY_SAMPLES_PASSED, query_id);
 
             glBindFramebuffer(GL_FRAMEBUFFER, fbo[pass%2]);
-            glViewport(0, 0, ren_width, ren_height);
+            glDepthFunc(GL_LESS);
             glClearColor(1,1,1,1.);
             glClearDepth(1.);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -362,7 +391,7 @@ Usage:
             glGetQueryObjectuiv(query_id, GL_QUERY_RESULT, &any_samples_passed);
             
             if (any_samples_passed != 1) {
-                std::cout<<"peeled last layer as pass "<<pass<<std::endl;
+                std::cout<<"every layer peeled in "<<pass+1<<" psses"<<std::endl;
                 break;
             }
 
