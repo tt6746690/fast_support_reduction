@@ -20,7 +20,7 @@ void main()
 
     // use color to represent normal direction of fragment
     //      frontfacing:        color.r == 1
-    //      backfacing:         color.g == 1
+    //      backfacing:         color.r == 0  (color.g == 1 for visualization's sake)
     if (gl_FrontFacing) {
         color = vec4(1,0,0,1);
     } else {
