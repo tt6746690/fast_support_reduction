@@ -39,6 +39,15 @@ void line(
     Eigen::PlainObjectBase<DerivedV>& V, 
     Eigen::PlainObjectBase<DerivedF>& F);
 
+// generate vertices and edges for a quad inside NDC
+template <
+    typename DerivedV,
+    typename DerivedF,
+    typename DerivedT>
+void quad(
+    Eigen::PlainObjectBase<DerivedV>& V,
+    Eigen::PlainObjectBase<DerivedF>& F);
+
 
 // generate vertices and edges and texture coordinates for a quad
 //
@@ -110,6 +119,24 @@ void line(
     F << 0, 1;
 }
 
+
+template <
+    typename DerivedV,
+    typename DerivedF,
+    typename DerivedT>
+void quad(
+    Eigen::PlainObjectBase<DerivedV>& V,
+    Eigen::PlainObjectBase<DerivedF>& F)
+{
+    V.resize(4, 3);
+    F.resize(2, 3);
+    V << -1, -1, 0,
+          1, -1, 0,
+          1,  1, 0,
+         -1,  1, 0;
+    F << 0, 1, 2,
+         0, 2, 3;
+}
 
 
 template <

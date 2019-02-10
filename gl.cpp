@@ -28,6 +28,7 @@
 #include "init_render_to_texture.h"
 #include "depthbuffer_to_png.h"
 #include "Line.h"
+#include "Quad.h"
 #include "Box.h"
 
 using namespace Eigen;
@@ -50,15 +51,15 @@ const auto getfilepath = [](const string& name, const string& ext){
     return data_dir + name + "." + ext; 
 };
 
-MatrixXf V, Vscreen, Tscreen, V1;
-MatrixXi F, Fscreen, F1;
+MatrixXf V;
+MatrixXi F;
 
-GLuint vao, vao_screen;
+GLuint vao;
 
 bool wire_frame = false;
 bool orthographic = false;
 bool mouse_down = false;
-bool save_png = true;
+bool save_png = false;
 bool compute_selfintersection = true;
 
 Affine3f model = Affine3f::Identity();
@@ -138,11 +139,10 @@ int main(int argc, char* argv[])
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
     normalize_coordinate(V);
 
-    textured_quad(Vscreen, Fscreen, Tscreen);
-    Line<float> xaxis(Vector3f(-1,0,0), Vector3f(5,0,0));
-    Line<float> yaxis(Vector3f(0,-1,0), Vector3f(0,5,0));
-    Box<float> unitbox(half);
-
+    auto screen = Quad<float>();
+    auto xaxis = Line<float>(Vector3f(-1,0,0), Vector3f(5,0,0));
+    auto yaxis = Line<float>(Vector3f(0,-1,0), Vector3f(0,5,0));
+    auto unitbox = Box<float>(half);
 
     Matrix4f ortho_proj;
     float near, far, top, right, left, bottom;
@@ -261,14 +261,10 @@ Usage:
 
 
     vertex_array(V, F, vao);
-    vertex_array_texture(Vscreen, Fscreen, Tscreen, vao_screen);
+    screen.create_vertex_array();
     xaxis.create_vertex_array();
     yaxis.create_vertex_array();
     unitbox.create_vertex_array();
-
-    // create framebuffer
-    // GLuint fbo, tex_id, dtex_id;
-    // init_render_to_texture(ren_width, ren_height, fbo, tex_id, dtex_id);
 
     GLuint fbo[2], tex_id[2], dtex_id[2];
     GLuint ren_fbo[2], ren_tex[2], ren_depth_tex[2];
@@ -280,7 +276,7 @@ Usage:
 
 
     const auto depth_peel = [&]() {
-        const int max_passes = 20;
+        const int max_passes = 3;
         int which_pass;
         GLuint query_id, any_samples_passed = 0;
         glGenQueries(1, &query_id);
@@ -303,6 +299,7 @@ Usage:
 
         for (int pass = 0; pass < max_passes; ++pass) 
         {
+
             switch(pass) {
                 case 0:  which_pass = 0; break;
                 case 1:  which_pass = 1; break;
@@ -321,23 +318,22 @@ Usage:
                 intersection_shader.compile();
                 intersection_shader.use();
                 intersection_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
-                intersection_shader.set_int("which_pass", which_pass);
                 intersection_shader.set_float("width", ren_width);
                 intersection_shader.set_float("height", ren_height);
 
-                peel_shader.set_int("prev_depth_texture", 0);
+                intersection_shader.set_int("prev_depth_texture", 0);
                 glActiveTexture(GL_TEXTURE0+0);
                 glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%2]);
-                peel_shader.set_int("prevprev_depth_texture", 1);
+                intersection_shader.set_int("prevprev_depth_texture", 1);
                 glActiveTexture(GL_TEXTURE0+1);
                 glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-2)%2]);
-                peel_shader.set_int("prev_color_texture", 2);
+                intersection_shader.set_int("prev_color_texture", 2);
                 glActiveTexture(GL_TEXTURE0+2);
                 glBindTexture(GL_TEXTURE_2D, tex_id[(pass-1)%2]);
-                peel_shader.set_int("prevprev_color_texture", 3);
+                intersection_shader.set_int("prevprev_color_texture", 3);
                 glActiveTexture(GL_TEXTURE0+3);
                 glBindTexture(GL_TEXTURE_2D, tex_id[(pass-2)%2]);
-                peel_shader.set_int("acc_color_texture", 4);
+                intersection_shader.set_int("acc_color_texture", 4);
                 glActiveTexture(GL_TEXTURE0+4);
                 glBindTexture(GL_TEXTURE_2D, ren_tex[(pass-1)%2]);
 
@@ -348,8 +344,9 @@ Usage:
                 if (save_png) {
                     igl::png::render_to_png(
                         string("intersection_color_"+to_string(pass)+".png"), ren_width, ren_height, true, false);
+                    depthbuffer_to_png(
+                        string("intersection_depth_"+to_string(pass)+".png"), ren_width, ren_height);
                 }
-
             }
 
             // depth peeling
@@ -391,12 +388,12 @@ Usage:
             glGetQueryObjectuiv(query_id, GL_QUERY_RESULT, &any_samples_passed);
             
             if (any_samples_passed != 1) {
-                std::cout<<"every layer peeled in "<<pass+1<<" psses"<<std::endl;
+                std::cout<<"every layer peeled in "<<pass+1<<" passes"<<std::endl;
                 break;
             }
-
         }
     };
+
 
 
     while (!glfwWindowShouldClose(window))
@@ -407,65 +404,61 @@ Usage:
             depth_peel(); compute_selfintersection = false;
         }
 
-        // off-screen rendering to texture
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo[0]);
-        glViewport(0, 0, ren_width, ren_height);     // need to set this !
-        glClearColor(0.1, 0.1, 0.1, 1.);
-        glClearDepth(1.);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        // // off-screen rendering to texture
+        // glBindFramebuffer(GL_FRAMEBUFFER, fbo[1]);
+        // glViewport(0, 0, ren_width, ren_height);     // need to set this !
+        // glClearColor(0.1, 0.1, 0.1, 1.);
+        // glClearDepth(1.);
+        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        peel_shader.compile();
-        peel_shader.use();
-        peel_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        // peel_shader.compile();
+        // peel_shader.use();
+        // peel_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
+        // glBindVertexArray(vao);
+        // glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
+        // glBindVertexArray(0);
 
-        if (save_png) {
-            igl::png::render_to_png("color.png", ren_width, ren_height, true, false);
-            depthbuffer_to_png("depth.png", ren_width, ren_height);
-            save_png = false;
-        }
+        // if (save_png) {
+        //     igl::png::render_to_png("color.png", ren_width, ren_height, true, false);
+        //     depthbuffer_to_png("depth.png", ren_width, ren_height);
+        //     save_png = false;
+        // }
 
-        //  default framebuffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        set_viewport(window);
-        glClearColor(0.5, 0.5, 0.5, 1.);
-        glClearDepth(1.);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        if (wire_frame)
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        else
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        // //  default framebuffer
+        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        // set_viewport(window);
+        // glClearColor(0.5, 0.5, 0.5, 1.);
+        // glClearDepth(1.);
+        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // if (wire_frame)
+        //     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        // else
+        //     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        viz_shader.compile();
-        viz_shader.use();
-        viz_shader.set_mat4("proj",  projection);
-        viz_shader.set_mat4("view",  view.matrix());
-        viz_shader.set_mat4("model", model.matrix());
+        // viz_shader.compile();
+        // viz_shader.use();
+        // viz_shader.set_mat4("proj",  projection);
+        // viz_shader.set_mat4("view",  view.matrix());
+        // viz_shader.set_mat4("model", model.matrix());
 
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        // glBindVertexArray(vao);
+        // glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
+        // glBindVertexArray(0);
 
-        xaxis.draw();
-        yaxis.draw();
-        unitbox.draw();
+        // xaxis.draw();
+        // yaxis.draw();
+        // unitbox.draw();
 
-        screen_shader.compile();
-        screen_shader.use();
-        screen_shader.set_mat4("proj",  projection);
-        screen_shader.set_mat4("view",  view.matrix());
-        screen_shader.set_mat4("model", (model*Translation3f(Vector3f(0,0,-2))).matrix());
-        screen_shader.set_int("depth_texture", 0);
+        // // screen_shader.compile();
+        // // screen_shader.use();
+        // // screen_shader.set_mat4("mvp", (projection*view*(model*Translation3f(Vector3f(0,0,-2)))).matrix());
+        // // screen_shader.set_int("screen_texture", 0);
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, dtex_id[0]);
-        glBindVertexArray(vao_screen);
-        glDrawElements(GL_TRIANGLES, Fscreen.size(), GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        // // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        // // glActiveTexture(GL_TEXTURE0);
+        // // glBindTexture(GL_TEXTURE_2D, dtex_id[1]);
+        // // screen.draw();
 
  
         glfwSwapBuffers(window);

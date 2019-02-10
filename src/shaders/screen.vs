@@ -1,16 +1,13 @@
 #version 410 core
 
-layout(location = 0) in vec3 pos_vs_in;
-layout(location = 1) in vec2 tex_coord_vs_in;
-
+in  vec3 pos_vs_in;
 out vec2 tex_coord_fs_in;
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 proj;
+uniform mat4 mvp;
 
 void main()
 {
-    gl_Position = proj * view * model * vec4(pos_vs_in, 1);
-    tex_coord_fs_in = tex_coord_vs_in;
+    // gl_Position = mvp * vec4(pos_vs_in, 1);
+    gl_Position = vec4(pos_vs_in, 1);
+    tex_coord_fs_in = vec2(0.5*(pos_vs_in.x+1), 0.5*(pos_vs_in.y+1));
 }

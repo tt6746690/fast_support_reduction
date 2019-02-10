@@ -35,7 +35,6 @@ void main()
         selfintersect_depth = 0.;
     }
 
-
     vec4 t_acc_color = texture(acc_color_texture, tex_coord);
     color = vec4(t_acc_color.rgb+selfintersect_depth, 1.);
 }
