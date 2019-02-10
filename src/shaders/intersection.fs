@@ -13,7 +13,14 @@ uniform sampler2D acc_color_texture;
 
 void main()
 {
-    vec2 tex_coord = vec2(gl_FragCoord.x/width, gl_FragCoord.y/height);
+    vec2  tex_coord = vec2(gl_FragCoord.x/width, gl_FragCoord.y/height);
+    float max_depth = texture(prev_depth_texture, tex_coord).r;
+    if (gl_FragCoord.z <= max_depth) {
+        discard;
+    }
+
+
+    // vec2 tex_coord = vec2(gl_FragCoord.x/width, gl_FragCoord.y/height);
     vec4 t_prev_color = texture(prev_color_texture, tex_coord);
     vec4 t_prevprev_color = texture(prevprev_color_texture, tex_coord);
     bool prev_frontfacing = t_prev_color.r == 1;
