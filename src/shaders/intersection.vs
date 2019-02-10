@@ -1,10 +1,10 @@
 #version 410 core
 
-layout(location = 0) in  vec3 pos_vs_in;
-
-uniform mat4 model_view_proj;
+in  vec3 pos_vs_in;
+out vec2 tex_coord;
 
 void main()
 {
-    gl_Position = model_view_proj * vec4(pos_vs_in, 1);
+    gl_Position = vec4(pos_vs_in, 1);
+    tex_coord = vec2(0.5*(pos_vs_in.x+1), 0.5*(pos_vs_in.y+1));
 }

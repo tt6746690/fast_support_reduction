@@ -40,8 +40,8 @@ int scr_height = 800;
 
 // size for off-screen rendering to texture
 //      note: scr_{width, height} changes with window resize callback
-const int ren_width = 800;
-const int ren_height = 800;
+const int ren_width = 400;
+const int ren_height = 400;
 
 string filename;
 string data_dir   = "../data/";
@@ -66,7 +66,9 @@ Affine3f model = Affine3f::Identity();
 Affine3f view = Affine3f::Identity() * Translation3f(Vector3f(0, 0, -10));
 Matrix4f projection = Matrix4f::Identity();
 
-float half = 1.1;
+// a bit > 1 so that gl_FragCoord.z == 1 means reached far plane
+//      instead of the added possibility of a fragment just touching the far plane
+float half = 1.001; 
 
 const auto set_view = [](Affine3f& view) {
     if (orthographic) {
@@ -138,6 +140,8 @@ int main(int argc, char* argv[])
     if (argc > 1) { filename = string(argv[1]); }
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
     normalize_coordinate(V);
+    V.col(0) = V.col(0)/2;
+    V.col(1) = V.col(1)/2;
 
     auto screen = Quad<float>();
     auto xaxis = Line<float>(Vector3f(-1,0,0), Vector3f(5,0,0));
@@ -259,20 +263,20 @@ Usage:
     viz_shader.compile();
     screen_shader.compile();
 
-
     vertex_array(V, F, vao);
     screen.create_vertex_array();
     xaxis.create_vertex_array();
     yaxis.create_vertex_array();
     unitbox.create_vertex_array();
 
-    GLuint fbo[2], tex_id[2], dtex_id[2];
+    GLuint fbo[3], tex_id[3], dtex_id[3];
+    for (int i = 0; i < 3; ++i) {
+        init_render_to_texture(ren_width, ren_height, fbo[i], tex_id[i], dtex_id[i]);
+    }
     GLuint ren_fbo[2], ren_tex[2], ren_depth_tex[2];
     for (int i = 0; i < 2; ++i) {
-        init_render_to_texture(ren_width, ren_height, fbo[i], tex_id[i], dtex_id[i]);
         igl::opengl::init_render_to_texture(ren_width, ren_height, false, ren_tex[i], ren_fbo[i], ren_depth_tex[i]);
     }
-
 
 
     const auto depth_peel = [&]() {
@@ -286,7 +290,6 @@ Usage:
         glDepthFunc(GL_LESS);     // d_frag < d_fbo
         glDepthRange(0, 1.0);     // linearly map: [-1, 1] (normalized coordinates) -> [0,1] (screen)
         glDisable(GL_CULL_FACE);
-        glFrontFace(GL_CCW);
         glViewport(0, 0, ren_width, ren_height);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -307,54 +310,11 @@ Usage:
                 default: which_pass = 2;
             }
 
-            // compute self-intersection, 
-            //      this step comes before depth-peeling so that we have information of 
-            //      (1) depth (2) normal orientation for the most recently peeled 2 layers
-
-            if (which_pass == 2) {
-                
-                glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
-                glDepthFunc(GL_ALWAYS);
-
-                intersection_shader.compile();
-                intersection_shader.use();
-                intersection_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
-                intersection_shader.set_float("width", ren_width);
-                intersection_shader.set_float("height", ren_height);
-
-                intersection_shader.set_int("prev_depth_texture", 0);
-                glActiveTexture(GL_TEXTURE0+0);
-                glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%2]);
-                intersection_shader.set_int("prevprev_depth_texture", 1);
-                glActiveTexture(GL_TEXTURE0+1);
-                glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-2)%2]);
-                intersection_shader.set_int("prev_color_texture", 2);
-                glActiveTexture(GL_TEXTURE0+2);
-                glBindTexture(GL_TEXTURE_2D, tex_id[(pass-1)%2]);
-                intersection_shader.set_int("prevprev_color_texture", 3);
-                glActiveTexture(GL_TEXTURE0+3);
-                glBindTexture(GL_TEXTURE_2D, tex_id[(pass-2)%2]);
-                intersection_shader.set_int("acc_color_texture", 4);
-                glActiveTexture(GL_TEXTURE0+4);
-                glBindTexture(GL_TEXTURE_2D, ren_tex[(pass-1)%2]);
-
-                glBindVertexArray(vao);
-                glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
-                glBindVertexArray(0);
-
-                if (save_png) {
-                    igl::png::render_to_png(
-                        string("intersection_color_"+to_string(pass)+".png"), ren_width, ren_height, true, false);
-                    depthbuffer_to_png(
-                        string("intersection_depth_"+to_string(pass)+".png"), ren_width, ren_height);
-                }
-            }
-
             // depth peeling
 
             glBeginQuery(GL_ANY_SAMPLES_PASSED, query_id);
 
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo[pass%2]);
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo[pass%3]);
             glDepthFunc(GL_LESS);
             glClearColor(1,1,1,1.);
             glClearDepth(1.);
@@ -371,7 +331,7 @@ Usage:
             if (!(which_pass == 0)) {
                 peel_shader.set_int("prev_depth_texture", 0);
                 glActiveTexture(GL_TEXTURE0+0);
-                glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%2]);
+                glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%3]);
             }
 
             glBindVertexArray(vao);
@@ -392,6 +352,55 @@ Usage:
                 std::cout<<"every layer peeled in "<<pass+1<<" passes"<<std::endl;
                 break;
             }
+
+            // compute self-intersection, 
+            //      this step comes before depth-peeling so that we have information of 
+            //      (1) depth (2) normal orientation for the most recently peeled 2 layers
+
+            if (which_pass == 2) {
+                
+                glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
+                glDepthFunc(GL_ALWAYS);
+
+                intersection_shader.compile();
+                intersection_shader.use();
+
+                {
+                    intersection_shader.set_int("cur_depth_texture", 0);
+                    glActiveTexture(GL_TEXTURE0+0);
+                    glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-0)%3]);
+                    intersection_shader.set_int("prev_depth_texture", 1);
+                    glActiveTexture(GL_TEXTURE0+1);
+                    glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%3]);
+                    intersection_shader.set_int("prevprev_depth_texture", 2);
+                    glActiveTexture(GL_TEXTURE0+2);
+                    glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-2)%3]);
+                }
+                {
+                    intersection_shader.set_int("cur_color_texture", 3);
+                    glActiveTexture(GL_TEXTURE0+3);
+                    glBindTexture(GL_TEXTURE_2D, tex_id[(pass-0)%3]);
+                    intersection_shader.set_int("prev_color_texture", 4);
+                    glActiveTexture(GL_TEXTURE0+4);
+                    glBindTexture(GL_TEXTURE_2D, tex_id[(pass-1)%3]);
+                    intersection_shader.set_int("prevprev_color_texture", 5);
+                    glActiveTexture(GL_TEXTURE0+5);
+                    glBindTexture(GL_TEXTURE_2D, tex_id[(pass-2)%3]);
+                }
+
+                intersection_shader.set_int("acc_color_texture", 6);
+                glActiveTexture(GL_TEXTURE0+6);
+                glBindTexture(GL_TEXTURE_2D, ren_tex[(pass-1)%2]);
+
+                screen.draw();
+
+                if (save_png) {
+                    igl::png::render_to_png(
+                        string("intersection_color_"+to_string(pass)+".png"), ren_width, ren_height, true, false);
+                    depthbuffer_to_png(
+                        string("intersection_depth_"+to_string(pass)+".png"), ren_width, ren_height);
+                }
+            }
         }
     };
 
@@ -403,27 +412,6 @@ Usage:
 
         if (compute_selfintersection) {
             depth_peel(); compute_selfintersection = false;
-        }
-
-        // off-screen rendering to texture
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo[1]);
-        glViewport(0, 0, ren_width, ren_height);     // need to set this !
-        glClearColor(0.1, 0.1, 0.1, 1.);
-        glClearDepth(1.);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        peel_shader.compile();
-        peel_shader.use();
-        peel_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-
-        if (save_png) {
-            igl::png::render_to_png("color.png", ren_width, ren_height, true, false);
-            depthbuffer_to_png("depth.png", ren_width, ren_height);
-            save_png = false;
         }
 
         //  default framebuffer
@@ -451,15 +439,17 @@ Usage:
         yaxis.draw();
         unitbox.draw();
 
-        // screen_shader.compile();
-        // screen_shader.use();
-        // screen_shader.set_mat4("mvp", (projection*view*(model*Translation3f(Vector3f(0,0,-2)))).matrix());
-        // screen_shader.set_int("screen_texture", 0);
+        screen_shader.compile();
+        screen_shader.use();
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, tex_id[0]);
-        // screen.draw();
+        for (int i = 0; i < 2; ++i) {
+            screen_shader.set_mat4("mvp", (projection*view*(model*Translation3f(Vector3f(0,0,-2-2*i)))).matrix());
+            screen_shader.set_int("screen_texture", i);
+            glActiveTexture(GL_TEXTURE0+i);
+            glBindTexture(GL_TEXTURE_2D, ren_tex[i]);
+            screen.draw();
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
