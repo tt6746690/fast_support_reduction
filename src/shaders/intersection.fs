@@ -30,7 +30,7 @@ void main()
     {
         vec4 t_prev_depth = texture(prev_depth_texture, tex_coord);
         float prev_depth = t_prev_depth.r;
-        selfintersect_depth = gl_FragCoord.z - prev_depth;
+        selfintersect_depth = abs(gl_FragCoord.z - prev_depth);
     } else {
         selfintersect_depth = 0.;
     }

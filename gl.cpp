@@ -59,7 +59,7 @@ GLuint vao;
 bool wire_frame = false;
 bool orthographic = false;
 bool mouse_down = false;
-bool save_png = false;
+bool save_png = true;
 bool compute_selfintersection = true;
 
 Affine3f model = Affine3f::Identity();
@@ -276,7 +276,7 @@ Usage:
 
 
     const auto depth_peel = [&]() {
-        const int max_passes = 3;
+        const int max_passes = 8;
         int which_pass;
         GLuint query_id, any_samples_passed = 0;
         glGenQueries(1, &query_id);
@@ -286,6 +286,7 @@ Usage:
         glDepthFunc(GL_LESS);     // d_frag < d_fbo
         glDepthRange(0, 1.0);     // linearly map: [-1, 1] (normalized coordinates) -> [0,1] (screen)
         glDisable(GL_CULL_FACE);
+        glFrontFace(GL_CCW);
         glViewport(0, 0, ren_width, ren_height);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -404,63 +405,62 @@ Usage:
             depth_peel(); compute_selfintersection = false;
         }
 
-        // // off-screen rendering to texture
-        // glBindFramebuffer(GL_FRAMEBUFFER, fbo[1]);
-        // glViewport(0, 0, ren_width, ren_height);     // need to set this !
-        // glClearColor(0.1, 0.1, 0.1, 1.);
-        // glClearDepth(1.);
-        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // off-screen rendering to texture
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo[1]);
+        glViewport(0, 0, ren_width, ren_height);     // need to set this !
+        glClearColor(0.1, 0.1, 0.1, 1.);
+        glClearDepth(1.);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        peel_shader.compile();
+        peel_shader.use();
+        peel_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        if (save_png) {
+            igl::png::render_to_png("color.png", ren_width, ren_height, true, false);
+            depthbuffer_to_png("depth.png", ren_width, ren_height);
+            save_png = false;
+        }
+
+        //  default framebuffer
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        set_viewport(window);
+        glClearColor(0.5, 0.5, 0.5, 1.);
+        glClearDepth(1.);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        if (wire_frame)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        else
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        viz_shader.compile();
+        viz_shader.use();
+        viz_shader.set_mat4("proj",  projection);
+        viz_shader.set_mat4("view",  view.matrix());
+        viz_shader.set_mat4("model", model.matrix());
+
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+
+        xaxis.draw();
+        yaxis.draw();
+        unitbox.draw();
+
+        // screen_shader.compile();
+        // screen_shader.use();
+        // screen_shader.set_mat4("mvp", (projection*view*(model*Translation3f(Vector3f(0,0,-2)))).matrix());
+        // screen_shader.set_int("screen_texture", 0);
+
         // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_2D, tex_id[0]);
+        // screen.draw();
 
-        // peel_shader.compile();
-        // peel_shader.use();
-        // peel_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
-        // glBindVertexArray(vao);
-        // glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
-        // glBindVertexArray(0);
-
-        // if (save_png) {
-        //     igl::png::render_to_png("color.png", ren_width, ren_height, true, false);
-        //     depthbuffer_to_png("depth.png", ren_width, ren_height);
-        //     save_png = false;
-        // }
-
-        // //  default framebuffer
-        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // set_viewport(window);
-        // glClearColor(0.5, 0.5, 0.5, 1.);
-        // glClearDepth(1.);
-        // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // if (wire_frame)
-        //     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        // else
-        //     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        // viz_shader.compile();
-        // viz_shader.use();
-        // viz_shader.set_mat4("proj",  projection);
-        // viz_shader.set_mat4("view",  view.matrix());
-        // viz_shader.set_mat4("model", model.matrix());
-
-        // glBindVertexArray(vao);
-        // glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
-        // glBindVertexArray(0);
-
-        // xaxis.draw();
-        // yaxis.draw();
-        // unitbox.draw();
-
-        // // screen_shader.compile();
-        // // screen_shader.use();
-        // // screen_shader.set_mat4("mvp", (projection*view*(model*Translation3f(Vector3f(0,0,-2)))).matrix());
-        // // screen_shader.set_int("screen_texture", 0);
-
-        // // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        // // glActiveTexture(GL_TEXTURE0);
-        // // glBindTexture(GL_TEXTURE_2D, dtex_id[1]);
-        // // screen.draw();
-
- 
         glfwSwapBuffers(window);
         glfwPollEvents();
         sleep_by_fps(60, tic);
