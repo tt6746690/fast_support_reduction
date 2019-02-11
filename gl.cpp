@@ -4,14 +4,12 @@
 #include <GLFW/glfw3.h>
 
 #include <igl/png/render_to_png.h>
-#include <igl/readOBJ.h>
 #include <igl/ortho.h>
 #include <igl/centroid.h>
 #include <igl/opengl/report_gl_error.h>
 #include <igl/opengl/init_render_to_texture.h>
 #include <igl/look_at.h>
 #include <igl/readOBJ.h>
-
 
 #include <iostream>
 #include <vector>
@@ -23,9 +21,6 @@
 #include "Shader.h"
 #include "persp.h"
 #include "wrap_igl.h"
-#include "primitives.h"
-#include "vertex_array_with_texture.h"
-#include "init_render_to_texture.h"
 #include "normalized_device_coordinate.h"
 #include "depthbuffer_to_png.h"
 #include "intersection_volume.h"
@@ -303,7 +298,6 @@ Usage:
         sleep_by_fps(60, tic);
     }
 
-    glDeleteFramebuffers(1, &fbo);
     glDeleteVertexArrays(1, &vao);
     glfwDestroyWindow(window);
     glfwTerminate();

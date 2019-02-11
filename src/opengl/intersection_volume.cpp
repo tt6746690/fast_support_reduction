@@ -21,10 +21,8 @@ SelfIntersectionVolume::SelfIntersectionVolume(
     std::string shader_dir)
     :   width(width), height(height),
         V(V), F(F),
-        peel_shader(
-            {shader_dir+"peel.vs"}, {shader_dir+"peel.fs"}),
-        intersection_shader(
-            {shader_dir+"intersection.vs"}, {shader_dir+"intersection.fs"})
+        peel_shader({shader_dir+"peel.vs"}, {shader_dir+"peel.fs"}),
+        intersection_shader({shader_dir+"intersection.vs"}, {shader_dir+"intersection.fs"})
 {
     max_passes = 20;
     done_preparation = false;

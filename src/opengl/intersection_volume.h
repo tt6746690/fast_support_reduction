@@ -3,7 +3,6 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
 
 #include <string>
 #include "Quad.h"
@@ -58,8 +57,8 @@ public:
     Eigen::Affine3f view;
     Eigen::Affine3f model;
     // framebuffers     size        usage
-    //      peel_*      3           stores depth/normal_dir
-    //      rend_*      2           record self-intersection volume
+    //      peel_*      3           color/depth buffer stores normal_dir/depth info
+    //      ren_*       2           color buffer records self-intersection volume
     GLuint* peel_fbo;
     GLuint* peel_tex;
     GLuint* peel_dtex;
@@ -72,7 +71,7 @@ public:
     // query object handle
     GLuint query_id;
 
-    // whether `prepare()` is called, remind to do garbage collection
+    // whether `prepare()` is called, remind to do garbage collection in dtor
     bool done_preparation;
     // whether output debugging pngs
     bool save_png;
