@@ -6,6 +6,11 @@
 #include "last_modification_time.h"
 #include "create_shader_program_from_files.h"
 
+Shader::Shader()
+    : prog_id(0),
+      time_of_prev_compilation(0)
+    {}
+
 Shader::Shader(
     const shader_paths& vertex_shader_paths,
     const shader_paths& fragment_shader_paths)

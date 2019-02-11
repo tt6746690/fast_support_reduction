@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project(fast_support_reduction)
 
-find_package(OpenMP)
-
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 option(WITH_BBW         "Generate bin for bbw"               OFF)
@@ -20,6 +20,10 @@ else()
     add_definitions(${CMAKE_CXX_FLAGS} "-march=native")
 endif()
 
+
+# openmp 
+
+find_package(OpenMP)
 
 # libigl
 

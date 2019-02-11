@@ -8,6 +8,7 @@
 class Shader {
     using shader_paths = std::vector<std::string>;
 public:
+    Shader();
     Shader(const shader_paths& vertex_shader_paths, const shader_paths& fragment_shader_paths);
 public:
     void use();

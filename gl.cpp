@@ -26,7 +26,9 @@
 #include "primitives.h"
 #include "vertex_array_with_texture.h"
 #include "init_render_to_texture.h"
+#include "normalized_device_coordinate.h"
 #include "depthbuffer_to_png.h"
+#include "intersection_volume.h"
 #include "Line.h"
 #include "Quad.h"
 #include "Box.h"
@@ -95,18 +97,6 @@ const auto make_centered_model = [](Affine3f& model){
 };
 
 
-// map vertex position to normalized coordinates [-1,1]^3
-const auto normalize_coordinate = [](MatrixXf& V) {
-    RowVectorXf min, max, diff;
-    max = V.colwise().minCoeff();
-    min = V.colwise().maxCoeff();
-    diff = max - min;
-    for (int i = 0; i < V.rows(); ++i) {
-        for (int j = 0; j < V.cols(); ++j) {
-            V(i, j) = 2 * (V(i, j) - min(j)) / diff(j) - 1;
-        }
-    }
-};
 
 const auto reshape = [](GLFWwindow* window, int width, int height) {
     ::scr_width = width; ::scr_height = height;
@@ -139,30 +129,26 @@ int main(int argc, char* argv[])
     filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
-    normalize_coordinate(V);
-    V.col(0) = V.col(0)/2;
-    V.col(1) = V.col(1)/2;
+    normalized_device_coordinate(V);
+    V.col(0) = V.col(0) / 2;
+    V.col(1) = V.col(1) / 2;
+
+    SelfIntersectionVolume vol(V, F, ren_width, ren_height, shader_dir);
 
     auto screen = Quad<float>();
     auto xaxis = Line<float>(Vector3f(-1,0,0), Vector3f(5,0,0));
     auto yaxis = Line<float>(Vector3f(0,-1,0), Vector3f(0,5,0));
     auto unitbox = Box<float>(half);
 
-    Matrix4f ortho_proj;
-    float near, far, top, right, left, bottom;
-    near = 0; far = 2*half; top = half; right = half;  // Remember we are in camera coordinates!
-    left = -right; bottom = -top;
-    igl::ortho(left, right, bottom, top, near, far, ortho_proj);
-    Affine3f ortho_view;
-    igl::look_at(Vector3f(0,0,-half), Vector3f(0,0,0), Vector3f(0,1,0), ortho_view.matrix());
-
 
     if (!glfwInit()) { std::cerr<<"Could not initialize glfw\n"; return -1; }
     glfwSetErrorCallback([](int err, const char* msg) { std::cerr<<msg<<'\n'; });
+    glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_VISIBLE, GL_TRUE);
 
     GLFWwindow* window = glfwCreateWindow(scr_width, scr_height, "gl", NULL, NULL);
     if (window == NULL) { 
@@ -254,12 +240,8 @@ Usage:
         view.matrix()(2,3) = min(max(view.matrix()(2,3)+(float)yoffset,-100.0f), 0.f);
     });
 
-    auto peel_shader = Shader({shader_dir+"peel.vs"}, {shader_dir+"peel.fs"});
-    auto intersection_shader = Shader({shader_dir+"intersection.vs"}, {shader_dir+"intersection.fs"});
     auto viz_shader = Shader({shader_dir+"viz.vs"}, {shader_dir+"viz.fs"});
     auto screen_shader = Shader({shader_dir+"screen.vs"}, {shader_dir+"screen.fs"});
-    
-    peel_shader.compile();
     viz_shader.compile();
     screen_shader.compile();
 
@@ -269,149 +251,14 @@ Usage:
     yaxis.create_vertex_array();
     unitbox.create_vertex_array();
 
-    GLuint fbo[3], tex_id[3], dtex_id[3];
-    for (int i = 0; i < 3; ++i) {
-        init_render_to_texture(ren_width, ren_height, fbo[i], tex_id[i], dtex_id[i]);
-    }
-    GLuint ren_fbo[2], ren_tex[2], ren_depth_tex[2];
-    for (int i = 0; i < 2; ++i) {
-        igl::opengl::init_render_to_texture(ren_width, ren_height, false, ren_tex[i], ren_fbo[i], ren_depth_tex[i]);
-    }
-
-
-    const auto depth_peel = [&]() {
-        const int max_passes = 8;
-        int which_pass;
-        GLuint query_id, any_samples_passed = 0;
-        glGenQueries(1, &query_id);
-
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDepthFunc(GL_LESS);     // d_frag < d_fbo
-        glDepthRange(0, 1.0);     // linearly map: [-1, 1] (normalized coordinates) -> [0,1] (screen)
-        glDisable(GL_CULL_FACE);
-        glViewport(0, 0, ren_width, ren_height);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        //  initialize buffer storing accumulated self-intersecting volume to zero
-        for (int i = 0; i < 2; ++i) {
-            glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[i]);
-            glClearColor(0,0,0,1.);
-            glClear(GL_COLOR_BUFFER_BIT);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        }
-
-        for (int pass = 0; pass < max_passes; ++pass) 
-        {
-
-            switch(pass) {
-                case 0:  which_pass = 0; break;
-                case 1:  which_pass = 1; break;
-                default: which_pass = 2;
-            }
-
-            // depth peeling
-
-            glBeginQuery(GL_ANY_SAMPLES_PASSED, query_id);
-
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo[pass%3]);
-            glDepthFunc(GL_LESS);
-            glClearColor(1,1,1,1.);
-            glClearDepth(1.);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-            peel_shader.compile();
-            peel_shader.use();
-            peel_shader.set_mat4("model_view_proj", (ortho_proj * ortho_view * model).matrix());
-            peel_shader.set_int("which_pass", which_pass);
-            peel_shader.set_float("width", ren_width);
-            peel_shader.set_float("height", ren_height);
-
-            if (!(which_pass == 0)) {
-                peel_shader.set_int("prev_depth_texture", 0);
-                glActiveTexture(GL_TEXTURE0+0);
-                glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%3]);
-            }
-
-            glBindVertexArray(vao);
-            glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
-            glBindVertexArray(0);
-
-            if (save_png) {
-                igl::png::render_to_png(
-                    string("peel_color_"+to_string(pass)+".png"), ren_width, ren_height, true, false);
-                depthbuffer_to_png(
-                    string("peel_depth_"+to_string(pass)+".png"), ren_width, ren_height);
-            }
-
-            glEndQuery(GL_ANY_SAMPLES_PASSED);
-            glGetQueryObjectuiv(query_id, GL_QUERY_RESULT, &any_samples_passed);
-            
-            if (any_samples_passed != 1) {
-                std::cout<<"every layer peeled in "<<pass+1<<" passes"<<std::endl;
-                break;
-            }
-
-            // compute self-intersection, 
-            //      this step comes before depth-peeling so that we have information of 
-            //      (1) depth (2) normal orientation for the most recently peeled 2 layers
-
-            if (which_pass == 2) {
-                
-                glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
-                glDepthFunc(GL_ALWAYS);
-
-                intersection_shader.compile();
-                intersection_shader.use();
-
-                {
-                    intersection_shader.set_int("cur_depth_texture", 0);
-                    glActiveTexture(GL_TEXTURE0+0);
-                    glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-0)%3]);
-                    intersection_shader.set_int("prev_depth_texture", 1);
-                    glActiveTexture(GL_TEXTURE0+1);
-                    glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-1)%3]);
-                    intersection_shader.set_int("prevprev_depth_texture", 2);
-                    glActiveTexture(GL_TEXTURE0+2);
-                    glBindTexture(GL_TEXTURE_2D, dtex_id[(pass-2)%3]);
-                }
-                {
-                    intersection_shader.set_int("cur_color_texture", 3);
-                    glActiveTexture(GL_TEXTURE0+3);
-                    glBindTexture(GL_TEXTURE_2D, tex_id[(pass-0)%3]);
-                    intersection_shader.set_int("prev_color_texture", 4);
-                    glActiveTexture(GL_TEXTURE0+4);
-                    glBindTexture(GL_TEXTURE_2D, tex_id[(pass-1)%3]);
-                    intersection_shader.set_int("prevprev_color_texture", 5);
-                    glActiveTexture(GL_TEXTURE0+5);
-                    glBindTexture(GL_TEXTURE_2D, tex_id[(pass-2)%3]);
-                }
-
-                intersection_shader.set_int("acc_color_texture", 6);
-                glActiveTexture(GL_TEXTURE0+6);
-                glBindTexture(GL_TEXTURE_2D, ren_tex[(pass-1)%2]);
-
-                screen.draw();
-
-                if (save_png) {
-                    igl::png::render_to_png(
-                        string("intersection_color_"+to_string(pass)+".png"), ren_width, ren_height, true, false);
-                    depthbuffer_to_png(
-                        string("intersection_depth_"+to_string(pass)+".png"), ren_width, ren_height);
-                }
-            }
-        }
-    };
-
-
+    vol.prepare();
 
     while (!glfwWindowShouldClose(window))
     {
         double tic = get_seconds();
 
         if (compute_selfintersection) {
-            depth_peel(); compute_selfintersection = false;
+            vol.compute(); compute_selfintersection = false;
         }
 
         //  default framebuffer
@@ -447,7 +294,7 @@ Usage:
             screen_shader.set_mat4("mvp", (projection*view*(model*Translation3f(Vector3f(0,0,-2-2*i)))).matrix());
             screen_shader.set_int("screen_texture", i);
             glActiveTexture(GL_TEXTURE0+i);
-            glBindTexture(GL_TEXTURE_2D, ren_tex[i]);
+            glBindTexture(GL_TEXTURE_2D, vol.ren_tex[i]);
             screen.draw();
         }
 
@@ -456,8 +303,8 @@ Usage:
         sleep_by_fps(60, tic);
     }
 
-    // glDeleteFramebuffers(1, &fbo);
-    // glDeleteVertexArrays(1, &vao);
+    glDeleteFramebuffers(1, &fbo);
+    glDeleteVertexArrays(1, &vao);
     glfwDestroyWindow(window);
     glfwTerminate();
     return EXIT_SUCCESS;
