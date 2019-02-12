@@ -13,7 +13,7 @@ mkdir build && cd build
 # brew install ninja
 cmake -GNinja ..
 
-# run (Clara remember flags!)
+# run (Clara: remember flags!)
 ./build/support_reduction \
 --data_dir data/ \
 --filename bb-bunny \
@@ -24,6 +24,10 @@ cmake -GNinja ..
 --c_arap 90 \
 --c_overhang 20 \
 --c_intersect 40 \
+
+# openmp
+export OMP_NUM_THREADS=<number of threads to use>
+Maximum: <number of cores>X improvement
 
 # debugging
 lldb build/support_reduction
