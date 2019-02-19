@@ -186,18 +186,17 @@ double arap_energy(
 
     // compute the arap energy
     // E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
-    double obj = 0;
-    int a, b;
-    double coeff, diff;
-    Matrix3T R_a;
-    Vector3T new_vec, old_vec, old_vec_T, trans_old_vec, diff_vec;
 
-    int i;
+    double obj = 0;
 
     MTR_BEGIN("C++", "arap");
     #pragma omp parallel for reduction(+:obj)
-    for (i = 0; i < F.rows(); i++) {
+    for (int i = 0; i < F.rows(); i++) {
         for (auto p : edge_indices) {
+            int a, b;
+            double coeff, diff;
+            Matrix3T R_a;
+            Vector3T new_vec, old_vec, old_vec_T, trans_old_vec, diff_vec;
             a = F(i, p.first);
             b = F(i, p.second);
             R_a = R.block(0, 3 * a, 3, 3).transpose();
@@ -212,7 +211,7 @@ double arap_energy(
         }
     }
     MTR_END("C++", "arap");
-
     return obj;
+
 }
 
