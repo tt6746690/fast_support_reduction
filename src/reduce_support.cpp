@@ -8,6 +8,7 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/boundary_loop.h>
 
+#include <omp.h>
 
 #include <algorithm>
 #include <cmath>
@@ -221,8 +222,12 @@ float reduce_support(
     };
 
     // Optimization
+    float fX;
+    #pragma omp parallel
+    {
+        fX = igl::pso(f, LB, UB, config.pso_iters, config.pso_population, X);
+    }
 
-    auto fX = igl::pso(f, LB, UB, config.pso_iters, config.pso_population, X);
     std::cout << "final fX: " << fX << '\n';
     unzip(X, Cd, BE, P, T);
     U = M * T;
