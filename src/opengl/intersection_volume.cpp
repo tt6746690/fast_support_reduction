@@ -9,6 +9,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <math.h>
 
 #include "normalized_device_coordinate.h"
 #include "depthbuffer_to_png.h"
@@ -34,6 +35,7 @@ SelfIntersectionVolume::SelfIntersectionVolume(
     ren_fbo   = new GLuint[2];
     ren_tex   = new GLuint[2];
     ren_dtex  = new GLuint[2];
+    volume_buffer = new unsigned char[4*width*height];
 }
 
 SelfIntersectionVolume::~SelfIntersectionVolume()
@@ -57,18 +59,22 @@ SelfIntersectionVolume::~SelfIntersectionVolume()
     delete [] ren_fbo;
     delete [] ren_tex;
     delete [] ren_dtex;
+    delete [] volume_buffer;
 }
 
 
 void SelfIntersectionVolume::prepare() 
 {
-    float half = 1.001;
-    igl::ortho(-half, half, -half, half, 0, 2*half, projection);
-    Eigen::Vector3f eye(0, 0, -half);
-    Eigen::Vector3f target(0, 0, 0);
+    Eigen::RowVector3f A_center = 0.5*(V.colwise().maxCoeff() + V.colwise().minCoeff());
+    float new_half = (V.rowwise()-A_center).rowwise().norm().maxCoeff() * 1.0001;
+    igl::ortho(-new_half, new_half, -new_half, new_half, 0, 2*new_half, projection);
+    Eigen::Vector3f eye(A_center(0), A_center(1), -new_half+A_center(2));
+    Eigen::Vector3f target(A_center(0), A_center(1), A_center(2));;
     Eigen::Vector3f up(0, 1, 0);
     igl::look_at(eye, target, up, view.matrix());
     model = Eigen::Affine3f::Identity();
+
+    ortho_box_volume = pow(2*new_half, 3.0);
 
     peel_shader.compile();
     intersection_shader.compile();
@@ -95,7 +101,7 @@ void SelfIntersectionVolume::prepare()
 }
 
 
-void SelfIntersectionVolume::compute()
+float SelfIntersectionVolume::compute()
 {
     int which_pass;
     GLuint any_samples_passed = 0;
@@ -160,6 +166,7 @@ void SelfIntersectionVolume::compute()
         glGetQueryObjectuiv(query_id, GL_QUERY_RESULT, &any_samples_passed);
         
         if (any_samples_passed != 1) {
+            glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
             std::cout<<"every layer peeled in "<<pass+1<<" passes"<<std::endl;
             break;
         }
@@ -209,5 +216,18 @@ void SelfIntersectionVolume::compute()
         }
     }
 
+
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, volume_buffer);
+
+    int accu = 0;
+    float intersection_percentage = 0.;
+    for (int i = 0; i < width; ++i) {
+        for (int j = 0; j < height; ++j) {
+            accu += volume_buffer[4*(j*(int)width+i)];
+        }
+    }
+    intersection_percentage = accu * 1. / (255.0 * width * height);
+
+    return intersection_percentage * ortho_box_volume;
     
 }

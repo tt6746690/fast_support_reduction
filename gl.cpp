@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
     if (argc > 1) { filename = string(argv[1]); }
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
     normalized_device_coordinate(V);
-    V.col(0) = V.col(0) / 2;
+    V.col(0) = V.col(0) * 2;
     V.col(1) = V.col(1) / 2;
 
     SelfIntersectionVolume vol(V, F, ren_width, ren_height, shader_dir);
@@ -253,7 +253,9 @@ Usage:
         double tic = get_seconds();
 
         if (compute_selfintersection) {
-            vol.compute(); compute_selfintersection = false;
+            float volume = vol.compute();
+            std::cout << "Volume: " << volume << std::endl;
+            compute_selfintersection = false;
         }
 
         //  default framebuffer

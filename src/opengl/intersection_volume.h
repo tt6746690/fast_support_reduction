@@ -30,7 +30,7 @@ public:
     void prepare();
 
     // computes self-intersection volume of mesh (V, F)
-    void compute();
+    float compute();
 
 public:
     // size of framebuffer, controls how precise computed value is 
@@ -77,5 +77,11 @@ public:
     bool save_png;
     // whether to re-compile shader code in render loop
     bool recompile;
+
+    // to temporarily store the self-intersection volume information
+    unsigned char * volume_buffer;
+
+    float ortho_box_volume;
+
 };
 
