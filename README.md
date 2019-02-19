@@ -13,21 +13,20 @@ mkdir build && cd build
 # brew install ninja
 cmake -GNinja ..
 
+# openmp
+export OMP_NUM_THREADS=4
+
 # run (Clara: remember flags!)
 ./build/support_reduction \
 --data_dir data/ \
 --filename bb-bunny \
 --n_fixed_bones 5 \
---pso_iters 30 \
---pso_population 40 \
+--pso_iters 5 \
+--pso_population 20 \
 --rotation_angle 50 \
 --c_arap 90 \
 --c_overhang 20 \
---c_intersect 40 \
-
-# openmp
-export OMP_NUM_THREADS=<number of threads to use>
-Maximum: <number of cores>X improvement
+--c_intersect 40
 
 # debugging
 lldb build/support_reduction
