@@ -66,7 +66,24 @@ process launch -- hand 1 1 1 45 20 100 1 10 0
     The near/far plane of orthographic projection are faces of the bounding box of the mesh.
     For each fragment, record 
 
+#### TODO for eris
 
++ compute percentage volume
+    + self-intersection volume: sum of color texture red channel after while loop.
+    + total volume: 255*width*height
++ compute absolute volume
+    + percentage volume * (ortho viewing box 2^3)
++ ortho view from normalized device coordinate -> a bounding sphere of the mesh 
+    + end goal: avoid a copy/resize for mesh 
+    + check matroyshka
++ implement linear blend skinning in shader ...
+    + weights preloaded as
+        + (best) in vertex buffer
+        + (ok) as uniform
+    + pass bones transformation matrix as uniform 
+    + do lbs in vertex shader ...
++ hook selfintersctionvolume to rest of pipeline
+    + check runtime/speedup
 
 
 #### Readings
