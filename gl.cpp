@@ -10,6 +10,10 @@
 #include <igl/opengl/init_render_to_texture.h>
 #include <igl/look_at.h>
 #include <igl/readOBJ.h>
+#include <igl/readMESH.h>
+#include <igl/readDMAT.h>
+#include <igl/normalize_row_sums.h>
+#include <igl/lbs_matrix.h>
 
 #include <iostream>
 #include <vector>
@@ -48,8 +52,9 @@ const auto getfilepath = [](const string& name, const string& ext){
     return data_dir + name + "." + ext; 
 };
 
-MatrixXf V;
+MatrixXf V, W, M, T;
 MatrixXi F;
+MatrixXi Tet; // !!!!!!!!!!!
 
 GLuint vao;
 
@@ -123,12 +128,19 @@ int main(int argc, char* argv[])
 {
     filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
-    igl::readOBJ(getfilepath(filename, "obj"), V, F);
+    igl::readMESH(getfilepath(filename, "mesh"), V, Tet, F);
+    igl::readDMAT(getfilepath(filename, "dmat"), W);
+    igl::normalize_row_sums(W, W);  // normalization before LBS !!
     normalized_device_coordinate(V);
-    V.col(0) = V.col(0) * 2;
-    V.col(1) = V.col(1) / 2;
 
-    SelfIntersectionVolume vol(V, F, ren_width, ren_height, shader_dir);
+    int m = W.cols();   // number of bones
+    int d = V.cols();
+    T.resize((d+1)*m, d+1); // 4 * 4
+    for (int i = 0; i < m; i++) {
+        T.block((d+1) * i, 0, d+1, d+1) = MatrixXf::Identity(d+1,d+1);
+    }
+
+    SelfIntersectionVolume vol(V, W, F, T, m, ren_width, ren_height, shader_dir);
 
     auto screen = Quad<float>();
     auto xaxis = Line<float>(Vector3f(-1,0,0), Vector3f(5,0,0));

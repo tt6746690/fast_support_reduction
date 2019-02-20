@@ -16,12 +16,16 @@
 
 SelfIntersectionVolume::SelfIntersectionVolume(
     const Eigen::MatrixXf& V,
+    const Eigen::MatrixXf& W,
     const Eigen::MatrixXi& F,
+    const Eigen::MatrixXf& T,
+    int num_bones,
     float width,
     float height,
     std::string shader_dir)
-    :   width(width), height(height),
-        V(V), F(F),
+    :   V(V), W(W), F(F), T(T),
+        num_bones(num_bones),
+        width(width), height(height),
         peel_shader({shader_dir+"peel.vs"}, {shader_dir+"peel.fs"}),
         intersection_shader({shader_dir+"intersection.vs"}, {shader_dir+"intersection.fs"})
 {
@@ -79,7 +83,35 @@ void SelfIntersectionVolume::prepare()
     peel_shader.compile();
     intersection_shader.compile();
 
-    igl::opengl::vertex_array(V, F, vao, vbo, ebo);
+    // igl::opengl::vertex_array(V, F, vao, vbo, ebo);
+
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> VR = V;
+    Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> FR = F;
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> VWR(VR.rows(),VR.cols()+W.cols());
+    VWR << V, W;
+
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*VWR.size(), VWR.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint)*FR.size(), FR.data(), GL_STATIC_DRAW);
+
+    auto stride = static_cast<GLsizei>((VR.cols()+W.cols())*sizeof(float));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+
+    for (int i = 0; i < num_bones; i++) {
+        glVertexAttribPointer(i+1, 1, GL_FLOAT, GL_FALSE, stride, (GLvoid*)((3+i)*sizeof(float)));
+        glEnableVertexAttribArray(i+1);
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
     quad.create_vertex_array();
 
     for (int i = 0; i < 3; ++i) {
@@ -115,11 +147,15 @@ float SelfIntersectionVolume::compute()
     glViewport(0, 0, width, height);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+    Eigen::Matrix4f T = Eigen::MatrixXf::Identity(4,4).matrix();
+
     {
         peel_shader.use();
         peel_shader.set_float("width", width);
         peel_shader.set_float("height", height);
         peel_shader.set_mat4("model_view_proj", mvp);
+        peel_shader.set_int("num_bones", num_bones);
+        peel_shader.set_mat4("T", T);
     }
 
     for (int pass = 0; pass < max_passes; ++pass) 
@@ -223,7 +259,7 @@ float SelfIntersectionVolume::compute()
     float intersection_percentage = 0.;
     for (int i = 0; i < width; ++i) {
         for (int j = 0; j < height; ++j) {
-            accu += volume_buffer[4*(j*(int)width+i)];
+            accu += volume_buffer[4*(j*(int)width+i)]; // read red channel
         }
     }
     intersection_percentage = accu * 1. / (255.0 * width * height);

@@ -21,13 +21,13 @@ else()
 endif()
 
 
-# openmp 
-SET(OpenMP_C_FLAGS       "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
-SET(OpenMP_C_LIB_NAMES   "omp")
-SET(OpenMP_CXX_FLAGS     "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
-SET(OpenMP_CXX_LIB_NAMES "omp")
-SET(OpenMP_omp_LIBRARY   "/usr/local/opt/libomp/lib/libomp.dylib")
-find_package(OpenMP REQUIRED)
+# # openmp 
+# SET(OpenMP_C_FLAGS       "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+# SET(OpenMP_C_LIB_NAMES   "omp")
+# SET(OpenMP_CXX_FLAGS     "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+# SET(OpenMP_CXX_LIB_NAMES "omp")
+# SET(OpenMP_omp_LIBRARY   "/usr/local/opt/libomp/lib/libomp.dylib")
+# find_package(OpenMP REQUIRED)
 
 # libigl
 

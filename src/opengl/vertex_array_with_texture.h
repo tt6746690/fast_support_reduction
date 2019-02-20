@@ -47,7 +47,6 @@ void vertex_array_texture(
     const Eigen::PlainObjectBase<DerivedT>& T,
     GLuint& vao)
 {
-
     // Inputs should be in RowMajor storage. 
     //      If not, we have no choice but to create a copy.
     if(!(V.Options & Eigen::RowMajor))
