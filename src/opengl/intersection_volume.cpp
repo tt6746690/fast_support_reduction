@@ -18,13 +18,10 @@ SelfIntersectionVolume::SelfIntersectionVolume(
     const Eigen::MatrixXf& V,
     const Eigen::MatrixXf& W,
     const Eigen::MatrixXi& F,
-    const Eigen::MatrixXf& T,
-    int num_bones,
     float width,
     float height,
     std::string shader_dir)
-    :   V(V), W(W), F(F), T(T),
-        num_bones(num_bones),
+    :   V(V), W(W), F(F),
         width(width), height(height),
         peel_shader({shader_dir+"peel.vs"}, {shader_dir+"peel.fs"}),
         intersection_shader({shader_dir+"intersection.vs"}, {shader_dir+"intersection.fs"})
@@ -40,6 +37,13 @@ SelfIntersectionVolume::SelfIntersectionVolume(
     ren_tex   = new GLuint[2];
     ren_dtex  = new GLuint[2];
     volume_buffer = new unsigned char[4*width*height];
+
+    num_bones = W.cols();
+    T.resize(4,num_bones*4); // col major tho
+    Eigen::Matrix4f Ti = Eigen::MatrixXf::Identity(4,4);
+    for (int i = 0; i < num_bones; i++) {
+        T.block(0, 4*i, 4, 4) = Ti;
+    }
 }
 
 SelfIntersectionVolume::~SelfIntersectionVolume()
@@ -147,15 +151,13 @@ float SelfIntersectionVolume::compute()
     glViewport(0, 0, width, height);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    Eigen::Matrix4f T = Eigen::MatrixXf::Identity(4,4).matrix();
-
     {
         peel_shader.use();
         peel_shader.set_float("width", width);
         peel_shader.set_float("height", height);
         peel_shader.set_mat4("model_view_proj", mvp);
         peel_shader.set_int("num_bones", num_bones);
-        peel_shader.set_mat4("T", T);
+        peel_shader.set_mat4_stack("T", T);
     }
 
     for (int pass = 0; pass < max_passes; ++pass) 

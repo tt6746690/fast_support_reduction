@@ -197,7 +197,7 @@ float reduce_support(
         double E_arap, E_overhang, E_intersect;
 
         if (config.is3d) {
-            E_overhang = overhang_energy_3d(U, F,   config.dp, tau);
+            E_overhang = overhang_energy_3d(U, F, config.dp, tau);
             E_intersect = self_intersection_3d(U, F);
         } else {
             E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, config.unsafe);

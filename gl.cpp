@@ -133,14 +133,7 @@ int main(int argc, char* argv[])
     igl::normalize_row_sums(W, W);  // normalization before LBS !!
     normalized_device_coordinate(V);
 
-    int m = W.cols();   // number of bones
-    int d = V.cols();
-    T.resize((d+1)*m, d+1); // 4 * 4
-    for (int i = 0; i < m; i++) {
-        T.block((d+1) * i, 0, d+1, d+1) = MatrixXf::Identity(d+1,d+1);
-    }
-
-    SelfIntersectionVolume vol(V, W, F, T, m, ren_width, ren_height, shader_dir);
+    SelfIntersectionVolume vol(V, W, F, ren_width, ren_height, shader_dir);
 
     auto screen = Quad<float>();
     auto xaxis = Line<float>(Vector3f(-1,0,0), Vector3f(5,0,0));

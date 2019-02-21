@@ -68,7 +68,16 @@ void Shader::set_mat4(const std::string& name,
     Eigen::Matrix<float, 4, 4, Eigen::ColMajor> value) const {
     glUniformMatrix4fv(glGetUniformLocation(prog_id, name.c_str()), 1, GL_FALSE, value.data());
 }
-
+void Shader::set_mat4_stack(const std::string& name,
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> value) const {
+    int num = value.cols()/value.rows();
+    glUniformMatrix4fv(glGetUniformLocation(prog_id, name.c_str()), num, GL_FALSE, value.data());
+}
+void Shader::set_mat4_stack(const std::string& name,
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> value) const {
+    int num = value.cols()/value.rows();
+    glUniformMatrix4fv(glGetUniformLocation(prog_id, name.c_str()), num, GL_FALSE, value.data());
+}
 
 bool Shader::any_changed(const std::vector<std::string>& paths) {
     for (auto&& path : paths) {

@@ -21,6 +21,8 @@ public:
     void set_vec3(const std::string& name, Eigen::Matrix<float, 1, 3, Eigen::RowMajor> value) const;
     void set_mat4(const std::string& name, Eigen::Matrix<float, 4, 4, Eigen::RowMajor> value) const;
     void set_mat4(const std::string& name, Eigen::Matrix<float, 4, 4, Eigen::ColMajor> value) const;
+    void set_mat4_stack(const std::string& name, Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> value) const;
+    void set_mat4_stack(const std::string& name, Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> value) const;
 private:
     bool any_changed(const std::vector<std::string>& paths);
 public:

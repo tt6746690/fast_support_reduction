@@ -14,8 +14,6 @@ public:
         const Eigen::MatrixXf& V,
         const Eigen::MatrixXf& W,
         const Eigen::MatrixXi& F,
-        const Eigen::MatrixXf& T,
-        int num_bones,
         float width,
         float height,
         std::string shader_dir = "../src/shaders/");
@@ -48,6 +46,7 @@ public:
     Eigen::MatrixXf W;
     Eigen::MatrixXi F;
     Eigen::MatrixXf T;
+    
     // opengl object handles 
     GLuint vao;
     GLuint vbo;
