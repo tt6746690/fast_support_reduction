@@ -2,12 +2,6 @@
 
 #### Reducing support for 3D printing
 
-+ [2012_stress_relief_improving_structural_strength_of_3D_printable_objects](2012_stress_relief_improving_structural_strength_of_3D_printable_objects.pdf)
-    + goal 
-        + automatic detection and correction of problematic cases for 3D printing objects
-        + inputs
-            + triangular watertight mesh
-
 + [2014_clever_support_efficient_support_structure_generation_for_digital_fabrication](2014_clever_support_efficient_support_structure_generation_for_digital_fabrication.pdf)
     + goal
         + reduction of support structures required by 3D printers
@@ -16,7 +10,7 @@
         + detect overhang points
             + point, face, edge overhangs
             + face: ... if printing direction and tangent of triangle exceed some criticl angle
-        + tree-like support
+        + tree-like support2012
             + uniform sampling on mesh for support
 
 + [2013_make_it_stand_balancing_shapes_for_3D_fabrication](2013_make_it_stand_balancing_shapes_for_3D_fabrication.pdf)
