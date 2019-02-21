@@ -77,6 +77,8 @@ public:
     int max_passes;
     // query object handle
     GLuint query_id;
+    // query object handle for benchmarking purposes
+    GLuint query_benchmark;
 
     // whether `prepare()` is called, remind to do garbage collection in dtor
     bool done_preparation;

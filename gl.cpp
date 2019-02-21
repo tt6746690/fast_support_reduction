@@ -32,6 +32,9 @@
 #include "Quad.h"
 #include "Box.h"
 
+#include "minitrace.h"
+
+
 using namespace Eigen;
 using namespace std;
 
@@ -41,7 +44,7 @@ int scr_height = 800;
 
 // size for off-screen rendering to texture
 //      note: scr_{width, height} changes with window resize callback
-const int ren_width = 400;
+const int ren_width  = 400;
 const int ren_height = 400;
 
 string filename;
@@ -126,6 +129,9 @@ const auto reshape_current = [](GLFWwindow* window) {
 
 int main(int argc, char* argv[])
 {
+    mtr_init("trace.json");
+
+
     filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
     igl::readMESH(getfilepath(filename, "mesh"), V, Tet, F);
@@ -258,8 +264,11 @@ Usage:
         double tic = get_seconds();
 
         if (compute_selfintersection) {
-            float volume = vol.compute();
-            std::cout << "Volume: " << volume << std::endl;
+            for (int i = 0; i < 50; i++) {
+                float volume = vol.compute();
+                // MTR_END("C++", "fast self intersection");
+                std::cout << "Volume: " << volume << std::endl;
+            }
             compute_selfintersection = false;
         }
 
@@ -308,5 +317,9 @@ Usage:
     glDeleteVertexArrays(1, &vao);
     glfwDestroyWindow(window);
     glfwTerminate();
+
+    mtr_flush();
+    mtr_shutdown();
+
     return EXIT_SUCCESS;
 }

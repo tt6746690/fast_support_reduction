@@ -14,6 +14,9 @@
 #include "normalized_device_coordinate.h"
 #include "depthbuffer_to_png.h"
 
+
+ #include "minitrace.h"
+
 SelfIntersectionVolume::SelfIntersectionVolume(
     const Eigen::MatrixXf& V,
     const Eigen::MatrixXf& W,
@@ -28,8 +31,8 @@ SelfIntersectionVolume::SelfIntersectionVolume(
 {
     max_passes = 20;
     done_preparation = false;
-    save_png = true;
-    recompile = true;
+    save_png = false;
+    recompile = false;
     peel_fbo  = new GLuint[3];
     peel_tex  = new GLuint[3];
     peel_dtex = new GLuint[3];
@@ -59,6 +62,7 @@ SelfIntersectionVolume::~SelfIntersectionVolume()
         glDeleteTextures(2, ren_tex);
         glDeleteRenderbuffers(2, ren_dtex);
         glDeleteQueries(1, &query_id);
+        glDeleteQueries(1, &query_benchmark);
 
     }
     delete [] peel_fbo;
@@ -133,14 +137,16 @@ void SelfIntersectionVolume::prepare()
     }
 
     glGenQueries(1, &query_id);
+    glGenQueries(1, &query_benchmark);
     done_preparation = true;
 }
 
 
 float SelfIntersectionVolume::compute()
 {
+
     int which_pass;
-    GLuint any_samples_passed = 0;
+    GLuint any_samples_passed = 0, gpu_time_ns = 0;
     Eigen::Matrix4f mvp = (projection*view*model).matrix();
 
     glEnable(GL_DEPTH_TEST);
@@ -160,6 +166,7 @@ float SelfIntersectionVolume::compute()
         peel_shader.set_mat4_stack("T", T);
     }
 
+
     for (int pass = 0; pass < max_passes; ++pass) 
     {
         switch(pass) {
@@ -168,6 +175,7 @@ float SelfIntersectionVolume::compute()
             default: which_pass = 2;
         }
 
+        glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
         // depth peeling
 
         glBeginQuery(GL_ANY_SAMPLES_PASSED, query_id);
@@ -189,9 +197,14 @@ float SelfIntersectionVolume::compute()
             glBindTexture(GL_TEXTURE_2D, peel_dtex[(pass-1)%3]);
         }
 
+   
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
+
+        glEndQuery(GL_TIME_ELAPSED);
+        glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
+        std::cout<<"peel shader (ns): "<<gpu_time_ns<<'\n';
 
         if (save_png) {
             igl::png::render_to_png(
@@ -209,16 +222,21 @@ float SelfIntersectionVolume::compute()
             break;
         }
 
-        // compute self-intersection
 
+        // compute self-intersection
         if (which_pass != 2)
             continue;
+
+        glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
 
         glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
         glDepthFunc(GL_ALWAYS);
 
+
         if (recompile) intersection_shader.compile();
         intersection_shader.use();
+
+        MTR_BEGIN("C++", "texture");
 
         intersection_shader.set_int("cur_depth_texture", 0);
         glActiveTexture(GL_TEXTURE0+0);
@@ -244,7 +262,13 @@ float SelfIntersectionVolume::compute()
         glActiveTexture(GL_TEXTURE0+6);
         glBindTexture(GL_TEXTURE_2D, ren_tex[(pass-1)%2]);
 
+        MTR_END("C++", "texture");
+
         quad.draw();
+
+        glEndQuery(GL_TIME_ELAPSED);
+        glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
+        std::cout<<"intersection shader (ns): "<<gpu_time_ns<<'\n';
 
         if (save_png) {
             igl::png::render_to_png(
@@ -265,6 +289,7 @@ float SelfIntersectionVolume::compute()
         }
     }
     intersection_percentage = accu * 1. / (255.0 * width * height);
+
 
     return intersection_percentage * ortho_box_volume;
     
