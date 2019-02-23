@@ -27,7 +27,8 @@ endif()
 # SET(OpenMP_CXX_FLAGS     "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
 # SET(OpenMP_CXX_LIB_NAMES "omp")
 # SET(OpenMP_omp_LIBRARY   "/usr/local/opt/libomp/lib/libomp.dylib")
-# find_package(OpenMP REQUIRED)
+
+find_package(OpenMP REQUIRED)
 
 # libigl
 
@@ -67,12 +68,12 @@ if(WITH_BBW)
     target_link_libraries(bbw igl::core igl::opengl_glfw igl::tetgen)
 endif()
 
-# add_executable(support_reduction support_reduction.cpp ${SRCFILES})
-# target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png)
-# target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
+add_executable(support_reduction support_reduction.cpp ${SRCFILES})
+target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png)
+target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
 
-add_executable(gl gl.cpp ${SRCFILES})
-target_link_libraries(gl igl::core igl::opengl_glfw igl::png)
+# add_executable(gl gl.cpp ${SRCFILES})
+# target_link_libraries(gl igl::core igl::opengl_glfw igl::png)
 
 if(WITH_VISUALIZE)
     add_definitions(-DVISUALIZE)

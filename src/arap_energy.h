@@ -153,6 +153,8 @@ double arap_energy(
     const Eigen::SparseMatrix<ScalarK>& K,
     bool is3d)
 {
+    MTR_BEGIN("C++", "arap");
+
     typedef typename DerivedT::Scalar ScalarT;
     typedef Eigen::Matrix<ScalarT, Eigen::Dynamic, Eigen::Dynamic> MatrixXT;
     typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
@@ -189,7 +191,6 @@ double arap_energy(
 
     double obj = 0;
 
-    MTR_BEGIN("C++", "arap");
     #pragma omp parallel for reduction(+:obj)
     for (int i = 0; i < F.rows(); i++) {
         for (auto p : edge_indices) {

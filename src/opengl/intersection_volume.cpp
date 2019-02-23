@@ -20,11 +20,12 @@
 SelfIntersectionVolume::SelfIntersectionVolume(
     const Eigen::MatrixXf& V,
     const Eigen::MatrixXf& W,
+    const Eigen::MatrixXf& M,
     const Eigen::MatrixXi& F,
     float width,
     float height,
     std::string shader_dir)
-    :   V(V), W(W), F(F),
+    :   V(V), W(W), M(M), F(F),
         width(width), height(height),
         peel_shader({shader_dir+"peel.vs"}, {shader_dir+"peel.fs"}),
         intersection_shader({shader_dir+"intersection.vs"}, {shader_dir+"intersection.fs"})
@@ -77,17 +78,6 @@ SelfIntersectionVolume::~SelfIntersectionVolume()
 
 void SelfIntersectionVolume::prepare() 
 {
-    Eigen::RowVector3f A_center = 0.5*(V.colwise().maxCoeff() + V.colwise().minCoeff());
-    float new_half = (V.rowwise()-A_center).rowwise().norm().maxCoeff() * 1.0001;
-    igl::ortho(-new_half, new_half, -new_half, new_half, 0, 2*new_half, projection);
-    Eigen::Vector3f eye(A_center(0), A_center(1), -new_half+A_center(2));
-    Eigen::Vector3f target(A_center(0), A_center(1), A_center(2));;
-    Eigen::Vector3f up(0, 1, 0);
-    igl::look_at(eye, target, up, view.matrix());
-    model = Eigen::Affine3f::Identity();
-
-    ortho_box_volume = pow(2*new_half, 3.0);
-
     peel_shader.compile();
     intersection_shader.compile();
 
@@ -142,8 +132,10 @@ void SelfIntersectionVolume::prepare()
 }
 
 
-float SelfIntersectionVolume::compute()
+float SelfIntersectionVolume::compute(
+    const Eigen::MatrixXf& T_new)
 {
+    MTR_BEGIN("C++", "fast self intersection");
 
     int which_pass;
     GLuint any_samples_passed = 0, gpu_time_ns = 0;
@@ -163,7 +155,7 @@ float SelfIntersectionVolume::compute()
         peel_shader.set_float("height", height);
         peel_shader.set_mat4("model_view_proj", mvp);
         peel_shader.set_int("num_bones", num_bones);
-        peel_shader.set_mat4_stack("T", T);
+        peel_shader.set_mat4_stack("T", T_new);
     }
 
 
@@ -175,7 +167,7 @@ float SelfIntersectionVolume::compute()
             default: which_pass = 2;
         }
 
-        glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
+        // glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
         // depth peeling
 
         glBeginQuery(GL_ANY_SAMPLES_PASSED, query_id);
@@ -203,8 +195,8 @@ float SelfIntersectionVolume::compute()
         glBindVertexArray(0);
 
         glEndQuery(GL_TIME_ELAPSED);
-        glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
-        std::cout<<"peel shader (ns): "<<gpu_time_ns<<'\n';
+        // glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
+        // std::cout<<"peel shader (ns): "<<gpu_time_ns<<'\n';
 
         if (save_png) {
             igl::png::render_to_png(
@@ -218,7 +210,7 @@ float SelfIntersectionVolume::compute()
         
         if (any_samples_passed != 1) {
             glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
-            std::cout<<"every layer peeled in "<<pass+1<<" passes"<<std::endl;
+            // std::cout<<"every layer peeled in "<<pass+1<<" passes"<<std::endl;
             break;
         }
 
@@ -227,7 +219,7 @@ float SelfIntersectionVolume::compute()
         if (which_pass != 2)
             continue;
 
-        glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
+        // glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
 
         glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
         glDepthFunc(GL_ALWAYS);
@@ -235,8 +227,6 @@ float SelfIntersectionVolume::compute()
 
         if (recompile) intersection_shader.compile();
         intersection_shader.use();
-
-        MTR_BEGIN("C++", "texture");
 
         intersection_shader.set_int("cur_depth_texture", 0);
         glActiveTexture(GL_TEXTURE0+0);
@@ -262,13 +252,11 @@ float SelfIntersectionVolume::compute()
         glActiveTexture(GL_TEXTURE0+6);
         glBindTexture(GL_TEXTURE_2D, ren_tex[(pass-1)%2]);
 
-        MTR_END("C++", "texture");
-
         quad.draw();
 
         glEndQuery(GL_TIME_ELAPSED);
-        glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
-        std::cout<<"intersection shader (ns): "<<gpu_time_ns<<'\n';
+        // glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
+        // std::cout<<"intersection shader (ns): "<<gpu_time_ns<<'\n';
 
         if (save_png) {
             igl::png::render_to_png(
@@ -290,6 +278,7 @@ float SelfIntersectionVolume::compute()
     }
     intersection_percentage = accu * 1. / (255.0 * width * height);
 
+    MTR_END("C++", "fast self intersection");
 
     return intersection_percentage * ortho_box_volume;
     

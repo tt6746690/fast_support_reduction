@@ -13,6 +13,7 @@ public:
     SelfIntersectionVolume(
         const Eigen::MatrixXf& V,
         const Eigen::MatrixXf& W,
+        const Eigen::MatrixXf& M,
         const Eigen::MatrixXi& F,
         float width,
         float height,
@@ -31,7 +32,9 @@ public:
     void prepare();
 
     // computes self-intersection volume of mesh (V, F)
-    float compute();
+    float compute(
+        const Eigen::MatrixXf& T_new
+    );
 
 public:
     // size of framebuffer, controls how precise computed value is 
@@ -44,6 +47,7 @@ public:
     // mesh data 
     Eigen::MatrixXf V;
     Eigen::MatrixXf W;
+    Eigen::MatrixXf M;
     Eigen::MatrixXi F;
     Eigen::MatrixXf T;
     

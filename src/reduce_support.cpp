@@ -21,13 +21,20 @@
 #include "self_intersection.h"
 #include "minitrace.h"
 
+#include "intersection_volume.h"
+
+#include <igl/opengl/glfw/background_window.h>
+
 #include <iostream>
+
+const int ren_width  = 400;
+const int ren_height = 400;
+
+std::string shader_dir = "../src/shaders/";
 
 typedef
   std::vector<Eigen::Quaterniond, Eigen::aligned_allocator<Eigen::Quaterniond> >
   RotationList;
-
-
 
 // convert `X` to stacked transposed transfomration for handles
 //
@@ -121,6 +128,12 @@ float reduce_support(
     Eigen::SparseMatrix<float> L, K;
     arap_precompute(V, F, M, L, K);
 
+    // fast self intersection
+    SelfIntersectionVolume vol(V, W, M, F, ren_width, ren_height, shader_dir);
+    GLFWwindow* window;
+    igl::opengl::glfw::background_window(window); // setup window and context
+    vol.prepare();
+
     // Overhang
     double tau = std::cos(config.alpha_max);
     Eigen::VectorXi bnd;
@@ -186,19 +199,38 @@ float reduce_support(
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U, &Tet,                           // mesh
         &M, &L, &K,                                 // arap
-        &tau, &bnd                                  // overhang
+        &tau, &bnd,                                 // overhang
+        &vol                                        // fast self intersection
     ](Eigen::RowVectorXf & X) -> float {
-
-        MTR_SCOPE_FUNC();
 
         unzip(X, Cd, BE, P, T);
         U = M * T;
+
+        Eigen::MatrixXf Tp;
+        Tp.resize(T.cols()+1, T.rows());
+        Eigen::MatrixXf row4;
+        row4.resize(1, T.rows());
+        for (int i = 0; i < Tp.cols()/4; i++) {
+            row4.block(0, i*4, 1, 4) = Eigen::RowVector4f(0, 0, 0, 1);
+        }
+        Tp << T.transpose(), row4;
+        
+        Eigen::RowVector3f A_center = 0.5*(U.colwise().maxCoeff() + U.colwise().minCoeff());
+        float new_half = (U.rowwise()-A_center).rowwise().norm().maxCoeff() * 1.0001;
+        igl::ortho(-new_half, new_half, -new_half, new_half, 0, 2*new_half, vol.projection);
+        Eigen::Vector3f eye(A_center(0), A_center(1), -new_half+A_center(2));
+        Eigen::Vector3f target(A_center(0), A_center(1), A_center(2));
+        Eigen::Vector3f up(0, 1, 0);
+        igl::look_at(eye, target, up, vol.view.matrix());
+
+        vol.model = Eigen::Affine3f::Identity();
+        vol.ortho_box_volume = pow(2*new_half, 3.0);
 
         double E_arap, E_overhang, E_intersect;
 
         if (config.is3d) {
             E_overhang = overhang_energy_3d(U, F, config.dp, tau);
-            E_intersect = self_intersection_3d(U, F);
+            E_intersect = vol.compute(Tp);
         } else {
             E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, config.unsafe);
             E_intersect = self_intersection_2d(U, F);
@@ -223,20 +255,19 @@ float reduce_support(
 
     // Optimization
     float fX;
-    #pragma omp parallel
-    {
-        fX = igl::pso(f, LB, UB, config.pso_iters, config.pso_population, X);
-    }
+    fX = igl::pso(f, LB, UB, config.pso_iters, config.pso_population, X);
 
     std::cout << "final fX: " << fX << '\n';
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
     unzip(X, Cd, BE, P, T);
     U = M * T;
     overhang_energy_risky(U, F, config.dp, tau, config.unsafe);
 
     return fX;
 }
-
-
 
 
 double reduce_support(

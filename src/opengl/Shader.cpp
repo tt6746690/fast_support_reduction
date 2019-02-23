@@ -71,7 +71,7 @@ void Shader::set_mat4(const std::string& name,
 void Shader::set_mat4_stack(const std::string& name,
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> value) const {
     int num = value.cols()/value.rows();
-    glUniformMatrix4fv(glGetUniformLocation(prog_id, name.c_str()), num, GL_FALSE, value.data());
+    glUniformMatrix4fv(glGetUniformLocation(prog_id, name.c_str()), num, GL_TRUE, value.data());
 }
 void Shader::set_mat4_stack(const std::string& name,
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> value) const {

@@ -95,17 +95,19 @@ int main(int argc, char*argv[])
             ["--c_intersect"]
             ("Coefficient for self-intersection energy");
 
+
     auto result = parser.parse(clara::Args(argc, argv));
     if (!result) { cerr<<"Error in command line: "<<result.errorMessage()<<'\n'; exit(1); }
     if (show_help) { cout<<parser; exit(0); };
 
-    mtr_init("build/trace.json");
+    mtr_init("trace.json");
 
     const auto getfilepath = [&](const string& name, const string& ext){ 
         return data_dir + name + "." + ext; };
 
     is3d = (filename.find("woody") == 0 || filename.find("thin") == 0) 
         ? false : true;
+
 
     if (is3d) igl::readMESH(getfilepath(filename, "mesh"), V, Tet, F);
     else      igl::readOBJ(getfilepath(filename, "obj"), V, F);
@@ -153,16 +155,9 @@ int main(int argc, char*argv[])
     config.c_intersect = c_intersect;
     config.display = true;
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    reduce_support(V, Tet, F, C, BE, W, config, T, U);
 
-    igl::opengl::glfw::Viewer viewer;
-    const auto set_color = [&](igl::opengl::glfw::Viewer &viewer) {
-        Eigen::MatrixXd C;
-        igl::jet(W.col(selected).eval(),true,C);
-        viewer.data().set_colors(C);
-    };
     const auto draw_coordsys = [&](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& V) {
         Eigen::Vector3d min = V.colwise().minCoeff();
         Eigen::Vector3d max = V.colwise().maxCoeff();
@@ -179,6 +174,7 @@ int main(int argc, char*argv[])
             viewer.data().add_edges(VCoord.row(0), VCoord.row(i), ::green);
         }
     };
+
     const auto draw_fixed_bones = [](
         igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE, std::vector<int>& fixed_bones) {
         for (int i = 0; i < fixed_bones.size(); ++i) {
@@ -199,63 +195,26 @@ int main(int argc, char*argv[])
         }
     };
 
+    // visualize the deformed mesh
+    igl::opengl::glfw::Viewer viewer;
+
+    // reset mesh 
     viewer.data().set_mesh(U, F);
-    draw_bones(viewer, C, BE);
-    draw_coordsys(viewer, U);
-    draw_fixed_bones(viewer, C, BE, fixed_bones);
-    if (config.is3d) {
-        overhang_energy_risky(U, F, config.dp, std::cos(0.25 * M_PI), config.unsafe);
-        draw_risky(viewer, U);
-    }
+
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 20;
-    viewer.callback_key_down = 
-        [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
-            switch(key) {
-                case '.':
-                    set_color(viewer);
-                    selected++;
-                    selected = std::min(std::max(selected,0),(int)W.cols()-1);
-                    break;
-                case ',':
-                    set_color(viewer);
-                    selected--;
-                    selected = std::min(std::max(selected,0),(int)W.cols()-1);
-                    break;
-                case ' ':
-                    reduce_support(V, Tet, F, C, BE, W, config, T, U);
-                    V = U;
 
-                    // clear all ViewerData
-                    viewer.selected_data_index = viewer.data_list.size()-1;
-                    while(viewer.erase_mesh(viewer.selected_data_index)){};
-                    viewer.data().clear();
+    draw_coordsys(viewer, U);
 
-                    // reset mesh 
-                    viewer.data().set_mesh(U, F);
-                    draw_coordsys(viewer, U);
+    // deformed bones
+    Eigen::MatrixXd CT;
+    Eigen::MatrixXi BET;
+    igl::deform_skeleton(C, BE, T, CT, BET);
+    draw_fixed_bones(viewer, CT, BET, fixed_bones);
+    draw_bones(viewer, CT, BET);
 
-                    // deformed bones
-                    Eigen::MatrixXd CT;
-                    Eigen::MatrixXi BET;
-                    igl::deform_skeleton(C, BE, T, CT, BET);
-                    draw_fixed_bones(viewer, CT, BET, fixed_bones);
-                    draw_bones(viewer, CT, BET);
-
-                    draw_risky(viewer, U);
-
-                    igl::writeOBJ(getfilepath(filename+"_deformed_"+std::to_string(pso_iters), "obj"), U, F);
-                    break;              
-            }
-            return true;
-        };
-    std::cout<<
-        "Press '.' to show next weight function.\n"<<
-        "Press ',' to show previous weight function.\n"<<
-        "Press [space] to start support reduction.\n";
     viewer.launch();
-
 
     mtr_flush();
     mtr_shutdown();

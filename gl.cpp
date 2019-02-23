@@ -20,6 +20,8 @@
 #include <string>
 #include <cmath>
 
+#include <igl/opengl/glfw/background_window.h>
+
 #include "time_utils.h"
 #include "print_opengl_info.h"
 #include "Shader.h"
@@ -44,12 +46,12 @@ int scr_height = 800;
 
 // size for off-screen rendering to texture
 //      note: scr_{width, height} changes with window resize callback
-const int ren_width  = 400;
-const int ren_height = 400;
+const int ren_width_  = 400;
+const int ren_height_ = 400;
 
 string filename;
 string data_dir   = "../data/";
-string shader_dir = "../src/shaders/";
+string shader_dir_ = "../src/shaders/";
 
 const auto getfilepath = [](const string& name, const string& ext){ 
     return data_dir + name + "." + ext; 
@@ -73,7 +75,7 @@ Matrix4f projection = Matrix4f::Identity();
 
 // a bit > 1 so that gl_FragCoord.z == 1 means reached far plane
 //      instead of the added possibility of a fragment just touching the far plane
-float half = 1.001; 
+float half = 1.001;
 
 const auto set_view = [](Affine3f& view) {
     if (orthographic) {
@@ -98,8 +100,6 @@ const auto make_centered_model = [](Affine3f& model){
     model = Affine3f::Identity();
     model.translate(-centroid.transpose());
 };
-
-
 
 const auto reshape = [](GLFWwindow* window, int width, int height) {
     ::scr_width = width; ::scr_height = height;
@@ -127,10 +127,10 @@ const auto reshape_current = [](GLFWwindow* window) {
     reshape(window,width_window,height_window);
 };
 
+
+
 int main(int argc, char* argv[])
 {
-    mtr_init("trace.json");
-
 
     filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
@@ -139,13 +139,22 @@ int main(int argc, char* argv[])
     igl::normalize_row_sums(W, W);  // normalization before LBS !!
     normalized_device_coordinate(V);
 
-    SelfIntersectionVolume vol(V, W, F, ren_width, ren_height, shader_dir);
+
+    Eigen::MatrixXd Vd = V.cast<double>().eval();
+    Eigen::MatrixXd Wd = W.cast<double>().eval();
+    Eigen::MatrixXd Md;
+    igl::lbs_matrix(Vd, Wd, Md);
+    Eigen::MatrixXf M;
+    M = Md.cast<float>().eval();
+
+
+    // initialize objects
+    SelfIntersectionVolume vol(V, W, M, F, ren_width_, ren_height_, shader_dir_);
 
     auto screen = Quad<float>();
     auto xaxis = Line<float>(Vector3f(-1,0,0), Vector3f(5,0,0));
     auto yaxis = Line<float>(Vector3f(0,-1,0), Vector3f(0,5,0));
     auto unitbox = Box<float>(half);
-
 
     if (!glfwInit()) { std::cerr<<"Could not initialize glfw\n"; return -1; }
     glfwSetErrorCallback([](int err, const char* msg) { std::cerr<<msg<<'\n'; });
@@ -166,14 +175,15 @@ int main(int argc, char* argv[])
 
     if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
         std::cerr<<"Failed to load OpenGL and its extensions\n";
-        return EXIT_FAILURE; 
+        return EXIT_FAILURE;
     }
 
     print_opengl_info(window);
     igl::opengl::report_gl_error("init");
 
+
     std::cout<< R"(
-Usage:
+    Usage:
     L,l     toggle wireframe rendering
     Z,z     reset view to look along z-axis
     R,r     reset model, view, projection to default
@@ -246,8 +256,8 @@ Usage:
         view.matrix()(2,3) = min(max(view.matrix()(2,3)+(float)yoffset,-100.0f), 0.f);
     });
 
-    auto viz_shader = Shader({shader_dir+"viz.vs"}, {shader_dir+"viz.fs"});
-    auto screen_shader = Shader({shader_dir+"screen.vs"}, {shader_dir+"screen.fs"});
+    auto viz_shader = Shader({shader_dir_+"viz.vs"}, {shader_dir_+"viz.fs"});
+    auto screen_shader = Shader({shader_dir_+"screen.vs"}, {shader_dir_+"screen.fs"});
     viz_shader.compile();
     screen_shader.compile();
 
@@ -259,16 +269,25 @@ Usage:
 
     vol.prepare();
 
+    // compute view and projection matices
+    // Notice: could not be put inside prepare() based on current design
+    Eigen::RowVector3f A_center = 0.5*(V.colwise().maxCoeff() + V.colwise().minCoeff());
+    float new_half = (V.rowwise()-A_center).rowwise().norm().maxCoeff() * 1.0001;
+    igl::ortho(-new_half, new_half, -new_half, new_half, 0, 2*new_half, vol.projection);
+    Eigen::Vector3f eye(A_center(0), A_center(1), -new_half+A_center(2));
+    Eigen::Vector3f target(A_center(0), A_center(1), A_center(2));;
+    Eigen::Vector3f up(0, 1, 0);
+    igl::look_at(eye, target, up, vol.view.matrix());
+    vol.model = Eigen::Affine3f::Identity();
+    vol.ortho_box_volume = pow(2*new_half, 3.0);
+
     while (!glfwWindowShouldClose(window))
     {
         double tic = get_seconds();
 
         if (compute_selfintersection) {
-            for (int i = 0; i < 50; i++) {
-                float volume = vol.compute();
-                // MTR_END("C++", "fast self intersection");
-                std::cout << "Volume: " << volume << std::endl;
-            }
+            float volume = vol.compute(vol.T);
+            std::cout << "Volume: " << volume << std::endl;
             compute_selfintersection = false;
         }
 
@@ -317,9 +336,6 @@ Usage:
     glDeleteVertexArrays(1, &vao);
     glfwDestroyWindow(window);
     glfwTerminate();
-
-    mtr_flush();
-    mtr_shutdown();
 
     return EXIT_SUCCESS;
 }
