@@ -42,6 +42,8 @@
     + http://web.mit.edu/16.20/homepage/index.html
 
 
+## Textbooks
+
 
 + [text_2009_structural_analysis_with_applications_to_aerospace_structures](text_2009_structural_analysis_with_applications_to_aerospace_structures.pdf)
     + great book on introducing basic concepts in linear elasticity theory
@@ -58,7 +60,7 @@
     + accompanying assignment: http://www.it.uu.se/edu/course/homepage/finmet2/vt14/material/proj1.pdf
 
 
-## Structure Analysis
+## papers
 
 + [2012_stress_relief_improving_structural_strength_of_3D_printable_objects](2012_stress_relief_improving_structural_strength_of_3D_printable_objects.pdf)
     + abstract 
