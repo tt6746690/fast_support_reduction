@@ -43,15 +43,19 @@
 
 
 
++ [text_2009_structural_analysis_with_applications_to_aerospace_structures](text_2009_structural_analysis_with_applications_to_aerospace_structures.pdf)
+    + great book on introducing basic concepts in linear elasticity theory
+    + chapter 1-4, skip special case analytic solution procedures
+    + but did not provide enough detail on FEM to solve the stress field
 
-## [text_2009_structural_analysis_with_applications_to_aerospace_structures](text_2009_structural_analysis_with_applications_to_aerospace_structures.pdf)
++ [text_2002_the_linearized_theory_of_elasticity](text_2002_the_linearized_theory_of_elasticity.pdf)
+    + pretty math intensive, but quite expressive and clean (tensor notation mostly)
+    + didn't really talk about how to solve linear elasticity equation using FEM
 
-+ couple
-    + two parallel forces that are equal in magnitude, used to create rotation without translation
-    + https://en.wikipedia.org/wiki/Couple_(mechanics)
-
-
-
++ [text_2010_the_finite_element_method_theory_implementation_and_practice](text_2010_the_finite_element_method_theory_implementation_and_practice.pdf)
+    + details on FEM
+    + chapter 11 specifically on FEM on linear elasticity problems
+    + accompanying assignment: http://www.it.uu.se/edu/course/homepage/finmet2/vt14/material/proj1.pdf
 
 
 ## Structure Analysis

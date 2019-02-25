@@ -1,0 +1,42 @@
+\documentclass[11pt]{article}
+\input{\string~/.macros}
+\usepackage[a4paper, total={6in, 8in}, margin=0.7in]{geometry}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{bm}
+\hypersetup{colorlinks=true, linktoc=all, linkcolor=blue}
+\newcommand{\bheading}[1]{\textbf{(#1)}}
+
+
+\begin{document}
+
+\begin{center}
+    2009 structural analysis with applications to aerospace structures
+\end{center}
+\newcommand{\linkbook}[3][../stress/text_2009_structural_analysis_with_applications_to_aerospace_structures.pdf]{
+    \noindent\href[page=#2]{#1}{\urlstyle{rm}{#3}}}
+
+\subsection*{\linkbook{119}{3 Linear elasticity solutions}}
+\begin{enumerate}
+    \item \bheading{Equalibrium Equations} describes conditions for a differential element of the body in terms of stress field, a consequence of Newton's Law (1.4 3pde)
+    \item \bheading{Strain-Displacement / Kinematic Equations} describes deformation of the body without referencing to forces that create the deformation (1.63, 1.71 6pde)
+    \item \bheading{constitutive law} describes behavior of materials under load, linking stress and strain components at a point, which has roots in material science and express an approximation to observed behavior of actual materials. (2.4 2.9 6pde hookes law)
+\end{enumerate}
+\subsection*{\linkbook{686}{12.1.1 Listing of linear elasticity equations}}
+\subsection*{\linkbook{122}{3.1.1 Beltrami-Michell's equations }}
+\subsection*{\linkbook{724}{13 Summary of yield criterion}}
+
+
+\begin{center}
+    1998 continuum mechanics for engineers
+\end{center}
+\renewcommand{\linkbook}[3][../stress/text_1998_continuum_mechanics_for_engineers.pdf]{
+    \noindent\href[page=#2]{#1}{\urlstyle{rm}{#3}}}
+
+\subsection*{\linkbook{248}{3 Beltrami-Michell Equations of Compatibility}}
+
+
+\end{document}
+
+
+  
