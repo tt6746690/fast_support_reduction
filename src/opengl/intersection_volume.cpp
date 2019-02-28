@@ -119,13 +119,6 @@ void SelfIntersectionVolume::prepare()
         igl::opengl::init_render_to_texture(width, height, false, ren_tex[i], ren_fbo[i], ren_dtex[i]);
     }
 
-    for (int i = 0; i < 2; ++i) {
-        glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[i]);
-        glClearColor(0, 0, 0, 1.);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-
     glGenQueries(1, &query_id);
     glGenQueries(1, &query_benchmark);
     done_preparation = true;
@@ -140,6 +133,14 @@ float SelfIntersectionVolume::compute(
     int which_pass;
     GLuint any_samples_passed = 0, gpu_time_ns = 0;
     Eigen::Matrix4f mvp = (projection*view*model).matrix();
+
+    // clear off-line render buffer for repeat call to `compute`
+    for (int i = 0; i < 2; ++i) {
+        glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[i]);
+        glClearColor(0, 0, 0, 1.);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);

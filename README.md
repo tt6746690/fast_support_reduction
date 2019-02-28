@@ -17,8 +17,8 @@ cmake -GNinja ..
 export OMP_NUM_THREADS=4
 
 # run (Clara: remember flags!)
-./build/support_reduction \
---data_dir data/ \
+./support_reduction \
+--data_dir ../data/ \
 --filename bb-bunny \
 --n_fixed_bones 5 \
 --pso_iters 5 \
@@ -26,7 +26,7 @@ export OMP_NUM_THREADS=4
 --rotation_angle 50 \
 --c_arap 90 \
 --c_overhang 20 \
---c_intersect 40
+--c_intersect 10000
 
 # debugging
 lldb build/support_reduction
@@ -69,24 +69,12 @@ process launch -- hand 1 1 1 45 20 100 1 10 0
     The near/far plane of orthographic projection are faces of the bounding box of the mesh.
     For each fragment, record 
 
-#### TODO for eris
+#### TODO
 
-+ compute percentage volume
-    + self-intersection volume: sum of color texture red channel after while loop.
-    + total volume: 255*width*height
-+ compute absolute volume
-    + percentage volume * (ortho viewing box 2^3)
-+ ortho view from normalized device coordinate -> a bounding sphere of the mesh 
-    + end goal: avoid a copy/resize for mesh 
-    + check matroyshka
-+ implement linear blend skinning in shader ...
-    + weights preloaded as
-        + (best) in vertex buffer
-        + (ok) as uniform
-    + pass bones transformation matrix as uniform 
-    + do lbs in vertex shader ...
-+ hook selfintersctionvolume to rest of pipeline
-    + check runtime/speedup
++ euler angle
++ optimized forward kinematics
++ depth counter algorithm for self intersection volume computation
+
 
 
 #### Readings
