@@ -15,7 +15,7 @@
 #include "depthbuffer_to_png.h"
 
 
- #include "minitrace.h"
+#include "minitrace.h"
 
 SelfIntersectionVolume::SelfIntersectionVolume(
     const Eigen::MatrixXf& V,

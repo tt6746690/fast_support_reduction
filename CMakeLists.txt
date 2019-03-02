@@ -52,6 +52,7 @@ include_directories(libs/Clara/include)
 include_directories(src)
 include_directories(src/opengl)
 include_directories(src/utils)
+include_directories(src/stress)
 
 file(GLOB SRCFILES 
     src/*.h
@@ -59,7 +60,9 @@ file(GLOB SRCFILES
     src/opengl/*h
     src/opengl/*cpp
     src/utils/*h
-    src/utils/*cpp)
+    src/utils/*cpp
+    src/stress/*h
+    src/stress/*cpp)
 
 # executables
 
