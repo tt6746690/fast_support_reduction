@@ -13,6 +13,9 @@
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/normalize_row_sums.h>
 #include <igl/deform_skeleton.h>
+#include <igl/copyleft/cgal/convex_hull.h>
+#include <igl/centroid.h>
+#include <igl/winding_number.h>
 
 #include "reduce_support.h"
 #include "overhang_energy.h"
@@ -182,6 +185,7 @@ int main(int argc, char*argv[])
             viewer.data().add_edges(C.row(edge(0)), C.row(edge(1)), ::red);
         }
     };
+
     const auto draw_bones = [](
             igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE) {
         viewer.data().add_points(C, ::sea_green);
@@ -189,6 +193,7 @@ int main(int argc, char*argv[])
             viewer.data().add_edges(C.row(BE(i, 0)), C.row(BE(i, 1)), ::sea_green);
         }
     };
+
     const auto draw_risky = [&config](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& V) {
         for (int i = 0; i < config.unsafe.rows(); ++i) {
             viewer.data().add_edges(V.row(config.unsafe(i, 0)), V.row(config.unsafe(i, 1)), ::red);
@@ -198,24 +203,67 @@ int main(int argc, char*argv[])
     // visualize the deformed mesh
     igl::opengl::glfw::Viewer viewer;
 
-    // reset mesh 
-    viewer.data().set_mesh(U, F);
+    // // reset mesh 
+    // viewer.data().set_mesh(U, F);
 
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 20;
 
-    draw_coordsys(viewer, U);
+    // draw_coordsys(viewer, U);
 
     // deformed bones
-    Eigen::MatrixXd CT;
-    Eigen::MatrixXi BET;
+    MatrixXd CT;
+    MatrixXi BET;
     igl::deform_skeleton(C, BE, T, CT, BET);
     draw_fixed_bones(viewer, CT, BET, fixed_bones);
     draw_bones(viewer, CT, BET);
 
-    viewer.launch();
+    // extract fixed vertices
+    vector<int> minVertices;
+    double tolerance = (U.col(1).maxCoeff() - U.col(1).minCoeff()) * 0.02;
+    double min_Y = U.col(1).minCoeff();
+    for (int i = 0; i < V.rows(); i++) {
+        if (abs(V(i, 1) - min_Y) < tolerance) {
+            minVertices.push_back(i);
+        }
+    }
+    // flatten
+    MatrixXd W_F;
+    W_F.resize(minVertices.size(), 3);
+    for (int i = 0; i < minVertices.size(); i++) {
+        W_F.block(i, 0, 1, 3) = U.row(minVertices[i]);
+    }
+    W_F.col(1).setConstant(min_Y);
 
+    MatrixXd W;
+    MatrixXi G;
+    double offset = (U.maxCoeff() - U.minCoeff())*0.05;
+    igl::copyleft::cgal::convex_hull(W_F, W, G);
+    W.rowwise() -= RowVector3d(0, offset, 0);
+
+    // compute projected centroid
+    Vector3d center;
+    double volume;
+    igl::centroid(U, F, center, volume);
+    center(1) = W_F.col(1).minCoeff() - offset;
+    viewer.data().add_points(center.transpose(), ::red);
+
+    // winding number
+    double wind = igl::winding_number(W, G, RowVector3d(0, 0, 0));
+    std::cout << "wind: " << wind << std::endl;
+
+    // visualize the deformed mesh and support polygon
+    // Concatenate (U, F) and (W, G) into (V_cat, F_cat)
+    Eigen::MatrixXd U_cat(U.rows()+W.rows(), U.cols());
+    U_cat << U, W;
+    Eigen::MatrixXi F_cat(F.rows()+G.rows(), F.cols());
+    F_cat << F, (G.array()+U.rows());
+
+    viewer.data().set_mesh(U_cat, F_cat);
+
+
+    viewer.launch();
     mtr_flush();
     mtr_shutdown();
 }

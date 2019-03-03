@@ -39,6 +39,12 @@ option(LIBIGL_WITH_TETGEN            "Use Tetgen"         ON)
 option(LIBIGL_WITH_PNG               "Use PNG"            ON)
 find_package(LIBIGL REQUIRED QUIET)
 
+# cgal
+
+find_package(CGAL REQUIRED)
+include(${CGAL_USE_FILE})
+set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE CACHE BOOL "Force CGAL to maintain CMAKE flags")
+
 # minitrace
 
 add_definitions(-DMTR_ENABLED)
@@ -71,15 +77,15 @@ if(WITH_BBW)
     target_link_libraries(bbw igl::core igl::opengl_glfw igl::tetgen)
 endif()
 
-# add_executable(support_reduction support_reduction.cpp ${SRCFILES})
-# target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png)
-# target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
+add_executable(support_reduction support_reduction.cpp ${SRCFILES})
+target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png)
+target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
 
 # add_executable(gl gl.cpp ${SRCFILES})
 # target_link_libraries(gl igl::core igl::opengl_glfw igl::png)
 
-add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
-target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png)
+# add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
+# target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png)
 
 if(WITH_VISUALIZE)
     add_definitions(-DVISUALIZE)
