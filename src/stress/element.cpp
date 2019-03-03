@@ -4,6 +4,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <vector>
+#include <iostream>
 
 using namespace Eigen;
 using namespace std;
@@ -12,7 +13,7 @@ Element::Element(const Vector4i& ids)
 {
     nodesIds = ids;
     B.resize(6, 12);
-    B << MatrixXd::Zero(6, 12);
+    B.setZero();
 }
 
 void Element::constructStiffnessMatrix(const MatrixXd& V, const MatrixXd& E, vector<Triplet<double>>& triplets)
@@ -39,7 +40,9 @@ void Element::constructStiffnessMatrix(const MatrixXd& V, const MatrixXd& E, vec
         B(5, k*3) = C(k, 3);
         B(5, k*3+2) = C(k, 1);
     }
-    B *= 1.0/(6*volume);
+
+    // std::cout << "B: " << std::endl;
+    // std::cout << B << std::endl;
 
     // construct element stiffness matrix Ki for each tet
     MatrixXd Ki(12, 12);

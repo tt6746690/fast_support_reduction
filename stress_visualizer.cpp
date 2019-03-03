@@ -23,6 +23,9 @@ const auto getfilepath = [](const string& name, const string& ext){
 };
 
 int main(int argc, char* argv[]) {
+
+    igl::opengl::glfw::Viewer viewer;
+
     string filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
     igl::readMESH(getfilepath(filename, "mesh"), V, Tet, F);
@@ -39,13 +42,22 @@ int main(int argc, char* argv[]) {
 
     E *= E_y/((1.0+Mu_p)*(1.0-2*Mu_p));
 
-    vector<Element> elements;
+    // extract fixed vertices
+    vector<int> minVertices;
+    double tolerance = (V.col(1).maxCoeff() - V.col(1).minCoeff()) * 0.05;
+    double min_Y = V.col(1).minCoeff();
+    for (int i = 0; i < V.rows(); i++) {
+        if (abs(V(i, 1) - min_Y) < tolerance) {
+            minVertices.push_back(i);
+        }
+    }
 
     // construct the global stiffness matrix K
     vector<Triplet<double>> triplets;
     VectorXd f(3*num_V); // applied loads: gravity
-    f << VectorXd::Zero(3*num_V);
+    f.setZero();
     Vector4i nodesIds;
+    vector<Element> elements;
     for (int i = 0; i < Tet.rows(); i++) {
         nodesIds = Tet.row(i);
         Element ele(nodesIds);
@@ -64,17 +76,33 @@ int main(int argc, char* argv[]) {
     SparseMatrix<double> K(3*num_V, 3*num_V);
     K.setFromTriplets(triplets.begin(), triplets.end());
 
+
+    // apply constraints
+    for (int i = 0; i < minVertices.size(); i++) {
+        int idx = minVertices[i];
+        K.prune([&idx](int m, int n, double) { 
+            return m!=3*idx && n!=3*idx && m!=3*idx+1 && n!=3*idx+1 && m!=3*idx+2 && n!=3*idx+2; });
+        K.coeffRef(3*idx, 3*idx) = 1;
+        K.coeffRef(3*idx+1, 3*idx+1) = 1;
+        K.coeffRef(3*idx+2, 3*idx+2) = 1;
+        f(3*idx) = 0;
+        f(3*idx+1) = 0;
+        f(3*idx+2) = 0;
+    }
+
     // solve for displacements at each vertex Kd = f
 	SimplicialLDLT<SparseMatrix<double>> solver(K);
 	VectorXd d = solver.solve(f); // displacements
 
     // analyze results
-    VectorXd N(num_V);
+    VectorXi N(num_V);
+    N << VectorXi::Zero(num_V);
     for(int i = 0; i < Tet.rows(); i++) {    
         for(int j = 0; j < 4; j++) {
             N[Tet(i, j)] += 1; //get normalization values for each vertex
         }
     }
+
 
     Matrix3d S;
     VectorXd s;
@@ -94,10 +122,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    igl::jet(s, true, C);
+    igl::jet(s, 0, s.maxCoeff()*0.25, C);
 
     // Plot the mesh
-    igl::opengl::glfw::Viewer viewer;
     viewer.data().set_mesh(V, F);
     viewer.data().set_colors(C);
     viewer.launch();
