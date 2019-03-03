@@ -119,6 +119,8 @@ float reduce_support(
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
+    const Eigen::MatrixXf& PO,
+    const Eigen::MatrixXi& G,
     ReduceSupportConfig<float>& config,
     Eigen::MatrixXf& T,
     Eigen::MatrixXf& U);
@@ -130,6 +132,8 @@ double reduce_support(
     const Eigen::MatrixXd& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXd& W,
+    const Eigen::MatrixXd& PO,
+    const Eigen::MatrixXi& G,
     ReduceSupportConfig<double>& config,
     Eigen::MatrixXd& T,
     Eigen::MatrixXd& U);

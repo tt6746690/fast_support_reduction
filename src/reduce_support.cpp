@@ -7,6 +7,8 @@
 #include <igl/directed_edge_parents.h>
 #include <igl/opengl/glfw/Viewer.h>
 #include <igl/boundary_loop.h>
+#include <igl/winding_number.h>
+#include <igl/centroid.h>
 
 #include <omp.h>
 
@@ -29,6 +31,8 @@
 
 const int ren_width  = 400;
 const int ren_height = 400;
+
+const double stand_energy = 1e6;
 
 std::string shader_dir = "../src/shaders/";
 
@@ -92,6 +96,8 @@ float reduce_support(
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
+    const Eigen::MatrixXf& PO,
+    const Eigen::MatrixXi& G,
     ReduceSupportConfig<float>& config,
     Eigen::MatrixXf& T,
     Eigen::MatrixXf& U)
@@ -111,14 +117,14 @@ float reduce_support(
     Eigen::MatrixXd Vd = V.cast<double>().eval();
     Eigen::MatrixXd Wd = W.cast<double>().eval();
 
-    // Cluster according to weights i.e. i-th vertex is in group `G(i)`
-    Eigen::VectorXi G;
-    {
-        Eigen::VectorXi S;
-        Eigen::VectorXd D;
-        int n_groups = 50;
-        igl::partition(Wd, n_groups, G, S, D);
-    }
+    // // Cluster according to weights i.e. i-th vertex is in group `G(i)`
+    // Eigen::VectorXi G;
+    // {
+    //     Eigen::VectorXi S;
+    //     Eigen::VectorXd D;
+    //     int n_groups = 50;
+    //     igl::partition(Wd, n_groups, G, S, D);
+    // }
 
     Eigen::MatrixXd Md;
     igl::lbs_matrix(Vd, Wd, Md);
@@ -200,7 +206,8 @@ float reduce_support(
         &T, &F, &U, &Tet,                           // mesh
         &M, &L, &K,                                 // arap
         &tau, &bnd,                                 // overhang
-        &vol                                        // fast self intersection
+        &vol,                                       // fast self intersection
+        &PO, &G                                     // make it stand
     ](Eigen::RowVectorXf & X) -> float {
 
         unzip(X, Cd, BE, P, T);
@@ -226,7 +233,7 @@ float reduce_support(
         vol.model = Eigen::Affine3f::Identity();
         vol.ortho_box_volume = pow(2*new_half, 3.0);
 
-        double E_arap, E_overhang, E_intersect;
+        double E_arap, E_overhang, E_intersect, E_stand;
 
         if (config.is3d) {
             E_overhang = overhang_energy_3d(U, F, config.dp, tau);
@@ -238,11 +245,27 @@ float reduce_support(
         
         E_arap = arap_energy(V, T, M, config.is3d?Tet:F, L, K, config.is3d);
 
+        // compute projected centroid
+        Eigen::Vector3f center;
+        float volume;
+        igl::centroid(U, F, center, volume);
+        center(1) = U.col(1).minCoeff();
+        double wind = igl::winding_number(PO, G, center); // winding number to check inside or outside
+
+        // stand energy
+        if (wind > 0.49) { /// just in case
+            E_stand = 0;
+        }
+        else {
+            E_stand = stand_energy;
+        }
+
         iter += 1;
         float fX = (float) (
             config.c_arap * E_arap +  
             config.c_overhang * E_overhang + 
-            config.c_intersect * E_intersect
+            config.c_intersect * E_intersect +
+            E_stand
         );
 
         std::cout<<"["<<iter<<"] f(X): "<<fX<<
@@ -277,6 +300,8 @@ double reduce_support(
     const Eigen::MatrixXd& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXd& W,
+    const Eigen::MatrixXd& PO,
+    const Eigen::MatrixXi& G,
     ReduceSupportConfig<double>& config,
     Eigen::MatrixXd& T,
     Eigen::MatrixXd& U)
@@ -286,8 +311,9 @@ double reduce_support(
     Eigen::MatrixXf Wf = W.cast<float>();
     Eigen::MatrixXf Tf = T.cast<float>();
     Eigen::MatrixXf Uf = U.cast<float>();
+    Eigen::MatrixXf POf = PO.cast<float>();
     ReduceSupportConfig<float> configf(config);
-    float fX = reduce_support(Vf, Tet, F, Cf, BE, Wf, configf, Tf, Uf);
+    float fX = reduce_support(Vf, Tet, F, Cf, BE, Wf, POf, G, configf, Tf, Uf);
     config = configf;
     T = Tf.cast<double>();
     U = Uf.cast<double>();
