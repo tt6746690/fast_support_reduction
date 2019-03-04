@@ -213,37 +213,7 @@ float reduce_support(
         unzip(X, Cd, BE, P, T);
         U = M * T;
 
-        Eigen::MatrixXf Tp;
-        Tp.resize(T.cols()+1, T.rows());
-        Eigen::MatrixXf row4;
-        row4.resize(1, T.rows());
-        for (int i = 0; i < Tp.cols()/4; i++) {
-            row4.block(0, i*4, 1, 4) = Eigen::RowVector4f(0, 0, 0, 1);
-        }
-        Tp << T.transpose(), row4;
-        
-        Eigen::RowVector3f A_center = 0.5*(U.colwise().maxCoeff() + U.colwise().minCoeff());
-        float new_half = (U.rowwise()-A_center).rowwise().norm().maxCoeff() * 1.0001;
-        igl::ortho(-new_half, new_half, -new_half, new_half, 0, 2*new_half, vol.projection);
-        Eigen::Vector3f eye(A_center(0), A_center(1), -new_half+A_center(2));
-        Eigen::Vector3f target(A_center(0), A_center(1), A_center(2));
-        Eigen::Vector3f up(0, 1, 0);
-        igl::look_at(eye, target, up, vol.view.matrix());
-
-        vol.model = Eigen::Affine3f::Identity();
-        vol.ortho_box_volume = pow(2*new_half, 3.0);
-
         double E_arap, E_overhang, E_intersect, E_stand;
-
-        if (config.is3d) {
-            E_overhang = overhang_energy_3d(U, F, config.dp, tau);
-            E_intersect = vol.compute(Tp);
-        } else {
-            E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, config.unsafe);
-            E_intersect = self_intersection_2d(U, F);
-        }
-        
-        E_arap = arap_energy(V, T, M, config.is3d?Tet:F, L, K, config.is3d);
 
         // compute projected centroid
         Eigen::Vector3f center;
@@ -255,10 +225,44 @@ float reduce_support(
         // stand energy
         if (wind > 0.49) { /// just in case
             E_stand = 0;
+            Eigen::MatrixXf Tp;
+            Tp.resize(T.cols()+1, T.rows());
+            Eigen::MatrixXf row4;
+            row4.resize(1, T.rows());
+            for (int i = 0; i < Tp.cols()/4; i++) {
+                row4.block(0, i*4, 1, 4) = Eigen::RowVector4f(0, 0, 0, 1);
+            }
+            Tp << T.transpose(), row4;
+            
+            Eigen::RowVector3f A_center = 0.5*(U.colwise().maxCoeff() + U.colwise().minCoeff());
+            float new_half = (U.rowwise()-A_center).rowwise().norm().maxCoeff() * 1.0001;
+            igl::ortho(-new_half, new_half, -new_half, new_half, 0, 2*new_half, vol.projection);
+            Eigen::Vector3f eye(A_center(0), A_center(1), -new_half+A_center(2));
+            Eigen::Vector3f target(A_center(0), A_center(1), A_center(2));
+            Eigen::Vector3f up(0, 1, 0);
+            igl::look_at(eye, target, up, vol.view.matrix());
+
+            vol.model = Eigen::Affine3f::Identity();
+            vol.ortho_box_volume = pow(2*new_half, 3.0);
+
+            if (config.is3d) {
+                E_overhang = overhang_energy_3d(U, F, config.dp, tau);
+                E_intersect = vol.compute(Tp);
+            } else {
+                E_overhang = overhang_energy_2d(U, bnd, config.dp, tau, config.unsafe);
+                E_intersect = self_intersection_2d(U, F);
+            }
+            
+            E_arap = arap_energy(V, T, M, config.is3d?Tet:F, L, K, config.is3d);
+
         }
         else {
             E_stand = stand_energy;
+            E_arap = 0;
+            E_overhang = 0;
+            E_intersect = 0;
         }
+
 
         iter += 1;
         float fX = (float) (
