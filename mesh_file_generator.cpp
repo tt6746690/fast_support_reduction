@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
   // TW: tet weights; W: surface weights for visualization
   robust_bbw(V, F, C, BE, TV, TT, TW, W);
 
-  igl::writeMESH(getfilepath("../", filename, "mesh"), TV, TT, F);
-  igl::writeDMAT(getfilepath("../", filename, "dmat"), TW);
+  igl::writeMESH(getfilepath("../data/", filename, "mesh"), TV, TT, F);
+  igl::writeDMAT(getfilepath("../data/", filename, "dmat"), TW);
 
   // Plot the mesh with pseudocolors
   igl::opengl::glfw::Viewer viewer;
