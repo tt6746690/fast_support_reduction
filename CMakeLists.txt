@@ -36,6 +36,7 @@ option(LIBIGL_WITH_OPENGL            "Use OpenGL"         ON)
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
 option(LIBIGL_WITH_TETGEN            "Use Tetgen"         ON)
+option(LIBIGL_WITH_TRIANGLE          "Use Triangle"       ON)
 option(LIBIGL_WITH_PNG               "Use PNG"            ON)
 find_package(LIBIGL REQUIRED QUIET)
 
@@ -59,6 +60,7 @@ include_directories(src)
 include_directories(src/opengl)
 include_directories(src/utils)
 include_directories(src/stress)
+include_directories(src/weights)
 
 file(GLOB SRCFILES 
     src/*.h
@@ -67,6 +69,8 @@ file(GLOB SRCFILES
     src/opengl/*cpp
     src/utils/*h
     src/utils/*cpp
+    src/weights/*h
+    src/weights/*cpp
     src/stress/*h
     src/stress/*cpp)
 
@@ -78,7 +82,7 @@ if(WITH_BBW)
 endif()
 
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
-target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png)
+target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png igl::tetgen)
 target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
 
 # add_executable(gl gl.cpp ${SRCFILES})
@@ -86,6 +90,10 @@ target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
 
 # add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
 # target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png)
+
+# add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
+# target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)
+
 
 if(WITH_VISUALIZE)
     add_definitions(-DVISUALIZE)

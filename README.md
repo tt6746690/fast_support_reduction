@@ -16,7 +16,14 @@ cmake -GNinja ..
 # openmp
 export OMP_NUM_THREADS=4
 
-# run (Clara: remember flags!)
+# mesh file generator: tetrahedralize the input surface mesh and generate bbw weights for each corresponding tet
+./mesh_file_generator dinosaur
+input files: ../dinosaur.obj ../dinosaur.tgf
+output file: ../data/dinosaur.mesh ../data/dinosaur.dmat
+
+
+# support reduction
+ run (Clara: remember flags!)
 ./support_reduction \
 --data_dir ../data/ \
 --filename bb-bunny \
