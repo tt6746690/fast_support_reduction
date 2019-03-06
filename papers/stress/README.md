@@ -42,7 +42,7 @@
     + http://web.mit.edu/16.20/homepage/index.html
 
 
-## Textbooks
+## textbooks & learning resources
 
 
 + [text_2009_structural_analysis_with_applications_to_aerospace_structures](text_2009_structural_analysis_with_applications_to_aerospace_structures.pdf)
@@ -58,6 +58,9 @@
     + details on FEM
     + chapter 11 specifically on FEM on linear elasticity problems
     + accompanying assignment: http://www.it.uu.se/edu/course/homepage/finmet2/vt14/material/proj1.pdf
+
++ siggraph 2012 course in FEM and structural analysis [part1](siggraph_2012_part1_classical_fem_method_and_discretization_methodology.pdf) and [part2](siggraph_2012_part2_model_reduction.pdf)
+
 
 
 ## papers
