@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-option(WITH_BBW         "Generate bin for bbw"               OFF)
 option(WITH_VISUALIZE   "Geneate bin for visualization"      OFF)
 option(WITH_DEBUG       "Enable debugging"                   ON)
 
@@ -76,11 +75,6 @@ file(GLOB SRCFILES
 
 # executables
 
-if(WITH_BBW)
-    add_executable(bbw bbw.cpp ${SRCFILES})
-    target_link_libraries(bbw igl::core igl::opengl_glfw igl::tetgen)
-endif()
-
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png igl::tetgen)
 target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
@@ -88,12 +82,11 @@ target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
 # add_executable(gl gl.cpp ${SRCFILES})
 # target_link_libraries(gl igl::core igl::opengl_glfw igl::png)
 
-# add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
-# target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png)
+add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
+target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png)
 
-# add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
-# target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)
-
+add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
+target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)
 
 if(WITH_VISUALIZE)
     add_definitions(-DVISUALIZE)

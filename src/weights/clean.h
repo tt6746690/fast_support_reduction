@@ -1,5 +1,7 @@
-#ifndef CLEAN_H
-#define CLEAN_H
+// copied from 
+//      https://github.com/alecjacobson/skeleton-poser/blob/master/clean.h
+// 
+#pragma once
 #include <Eigen/Core>
 // Given a mesh (V,F), fix self-intersections and open boundaries
 //
@@ -19,4 +21,3 @@ bool clean(
   Eigen::MatrixXd & CV,
   Eigen::MatrixXi & CF,
   Eigen::VectorXi & IM);
-#endif
