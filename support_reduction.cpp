@@ -148,7 +148,7 @@ int main(int argc, char*argv[])
     config.is3d = is3d;
     config.alpha_max = 0.25 * M_PI;
     config.dp = dp;
-    config.rotation_angle = rotation_angle;
+    config.rotation_angle = rotation_angle * M_PI / 180;
     config.fixed_bones = fixed_bones;
     config.pso_iters = pso_iters;
     config.pso_population = pso_population;

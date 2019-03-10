@@ -10,6 +10,8 @@
 #include <igl/min_quad_with_fixed.h>
 #include <igl/polar_svd3x3.h>
 #include <igl/fit_rotations.h>
+#include <igl/arap_dof.h>
+#include <igl/arap_rhs.h>
 
 #include <vector>
 #include <utility>
@@ -37,58 +39,74 @@ template<
     typename DerivedV,
     typename DerivedF,
     typename DerivedM,
+    typename DerivedGr,
     typename ScalarL,
     typename ScalarK>
 void arap_precompute(
     const Eigen::MatrixBase<DerivedV>& V,
-    const Eigen::MatrixBase<DerivedF>& F,
+    const Eigen::MatrixBase<DerivedF>& Tet,
     const Eigen::MatrixBase<DerivedM>& M,
+    const Eigen::MatrixBase<DerivedGr>& Gr,
     Eigen::SparseMatrix<ScalarL>& L,
-    Eigen::SparseMatrix<ScalarK>& K)
+    Eigen::SparseMatrix<ScalarK>& K_tilde)
 {
-    typedef typename DerivedV::Scalar ScalarV;
-    typedef typename DerivedF::Scalar ScalarF;
-    typedef Eigen::Matrix<ScalarV, 3, 1> RowVector3VT;
-    typedef Eigen::Matrix<ScalarF, 3, 1> RowVector3FT;
+    // typedef typename DerivedV::Scalar ScalarV;
+    // typedef typename DerivedF::Scalar ScalarF;
+    // typedef Eigen::Matrix<ScalarV, 3, 1> RowVector3VT;
+    // typedef Eigen::Matrix<ScalarF, 3, 1> RowVector3FT;
 
     // Compute L matrix
-    igl::cotmatrix(V, F, L);
+    igl::cotmatrix(V, Tet, L);
+
+    // Eigen::MatrixXd Md = M.cast<double>().eval();
+    // Eigen::MatrixXd Vd = V.cast<double>().eval();
+
+    // igl::ArapDOFData<Eigen::MatrixXd, double> arap_dof_data;
+    // igl::arap_dof_precomputation(V, Tet, M, Gr, arap_dof_data);
+    // K_tilde = arap_dof_data.CSM_M;
 
 
-    // Compute K matrix
-    std::vector<Eigen::Triplet<ScalarV>> triplets;
-    triplets.reserve(F.rows() * 3 * 3 * 3 * 2);
 
-    int i, j, k;
-    RowVector3FT f;
-    RowVector3VT e;
+    // // Compute K matrix
+    // std::vector<Eigen::Triplet<ScalarV>> triplets;
+    // triplets.reserve(Tet.rows() * 3 * 3 * 3 * 2);
 
-    for (int a = 0; a < F.rows(); ++a) {
-        f = F.row(a);
-        // half edge in face `f`
-        for (int b = 0; b < 3; ++b) {
-            i = f(b%3);
-            j = f((b+1)%3);
-            k = f((b+2)%3);
-            e = L.coeff(i, j) * (V.row(i) - V.row(j));
-            // assign k' = {i,j,k} and d = {1,2,3} s.t.
-            //      k_{i, 3k' + d} =  e^n_{ij}
-            //      k_{j, 3k' + d} = -e^n_{ij}
-            for (int d = 0; d < 3; ++d) {
-                triplets.emplace_back(i, 3*i+d,  e(d));
-                triplets.emplace_back(j, 3*i+d, -e(d));
-                triplets.emplace_back(i, 3*j+d,  e(d));
-                triplets.emplace_back(j, 3*j+d, -e(d));
-                triplets.emplace_back(i, 3*k+d,  e(d));
-                triplets.emplace_back(j, 3*k+d, -e(d));
-            }
-        }
-    }
+    // int i, j, k, t;
+    // RowVector3FT f;
+    // RowVector3VT e;
 
-    int nv = V.rows();
-    K.resize(nv, 3*nv);
-    K.setFromTriplets(triplets.begin(), triplets.end());
-    K = K / 6.0;
+    // for (int a = 0; a < Tet.rows(); ++a) {
+    //     f = Tet.row(a);
+    //     // half edge in face `f`
+    //     for (int b = 0; b < 4; ++b) {
+    //         i = f(b%4);
+    //         j = f((b+1)%4);
+    //         k = f((b+2)%4);
+    //         t = f((b+3)%4);
+    //         e = L.coeff(i, j) * (V.row(i) - V.row(j));
+    //         // assign k' = {i,j,k} and d = {1,2,3} s.t.
+    //         //      k_{i, 3k' + d} =  e^n_{ij}
+    //         //      k_{j, 3k' + d} = -e^n_{ij}
+    //         for (int d = 0; d < 3; ++d) {
+    //             triplets.emplace_back(i, 3*i+d,  e(d));
+    //             triplets.emplace_back(j, 3*i+d, -e(d));
+    //             triplets.emplace_back(i, 3*j+d,  e(d));
+    //             triplets.emplace_back(j, 3*j+d, -e(d));
+    //             triplets.emplace_back(i, 3*k+d,  e(d));
+    //             triplets.emplace_back(j, 3*k+d, -e(d));
+    //             triplets.emplace_back(i, 3*t+d,  e(d));
+    //             triplets.emplace_back(j, 3*t+d, -e(d));
+    //         }
+    //     }
+    // }
+
+    // int nv = V.rows();
+    // K.resize(nv, 3*nv);
+    // K.setFromTriplets(triplets.begin(), triplets.end());
+    // K = K / 6.0;
+
+
+
 }
 
 
@@ -138,80 +156,47 @@ void arap_single_iteration(
 
 
 template<
-    typename DerivedV,
+    typename DerivedU,
     typename DerivedT,
     typename DerivedM,
     typename DerivedF,
     typename ScalarL,
     typename ScalarK>
 double arap_energy(
-    const Eigen::MatrixBase<DerivedV>& V,
+    const Eigen::MatrixBase<DerivedU>& U,
     const Eigen::MatrixBase<DerivedT>& T,
     const Eigen::MatrixBase<DerivedM>& M,
-    const Eigen::MatrixBase<DerivedF>& F,
+    const Eigen::MatrixBase<DerivedF>& Tet,
     const Eigen::SparseMatrix<ScalarL>& L,
     const Eigen::SparseMatrix<ScalarK>& K,
     bool is3d)
 {
     MTR_BEGIN("C++", "arap");
 
-    typedef typename DerivedT::Scalar ScalarT;
-    typedef Eigen::Matrix<ScalarT, Eigen::Dynamic, Eigen::Dynamic> MatrixXT;
-    typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
-    typedef Eigen::Matrix<ScalarT, 3, 1> Vector3T;
+    typedef Eigen::Matrix<ScalarL, Eigen::Dynamic, Eigen::Dynamic> MatrixXT;
+    typedef Eigen::Matrix<ScalarL, 3, 3> Matrix3T;
 
-    // construct matrix C
-    MatrixXT U, C;
-    U = M * T;
-    C = K.transpose() * U;
+    const auto & Udim = U.replicate(3, 1);
+    MatrixXT S = K * Udim;
+    const int Rdim = 3;
+    MatrixXT R(Rdim, K.rows());
+    MatrixXT Sn = S / S.array().abs().maxCoeff();
+    igl::fit_rotations(Sn, true, R);
 
+    Matrix3T M1 = Udim.transpose() * L * Udim;
+    Matrix3T M2 = R * S;
 
-    MatrixXT R(C.cols(), C.rows());
-    
-    // construct matrix R: fit local rotation
-    const int size = U.rows();
-    Matrix3T Ck, Rk;
-    for (int k = 0; k < size; k++) {
-        Ck = C.block(3 * k, 0, 3, 3);
-        igl::polar_svd3x3(Ck, Rk);
-        R.block(0, 3 * k, 3, 3) = Rk;
-    }
+    // std::cout << R.block(0, 0, 3, 3) << std::endl;
+    // std::cout << "M1 trace: " << M1.trace() << std::endl;
+    // std::cout << "M2 trace: " << M2.trace() << std::endl;
+    // std::cout << "R: " << R.rows() << " x " << R.cols() << std::endl;
+    // std::cout << "K: " << K.rows() << " x " << K.cols() << std::endl;
+    // std::cout << "S: " << S.rows() << " x " << S.cols() << std::endl;
 
+    double obj = 0.5 * M1.trace() - M2.trace();
 
-    lii edge_indices;
-    if (is3d) {
-        edge_indices = lii{{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}}; // a tetrahedron has six edges
-    } else {
-        edge_indices = lii{{0, 1}, {1, 2}, {2, 0}};
-    }
-
-
-    // compute the arap energy
-    // E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
-
-    double obj = 0;
-
-    #pragma omp parallel for reduction(+:obj)
-    for (int i = 0; i < F.rows(); i++) {
-        for (auto p : edge_indices) {
-            int a, b;
-            double coeff, diff;
-            Matrix3T R_a;
-            Vector3T new_vec, old_vec, old_vec_T, trans_old_vec, diff_vec;
-            a = F(i, p.first);
-            b = F(i, p.second);
-            R_a = R.block(0, 3 * a, 3, 3).transpose();
-            new_vec = U.row(a) - U.row(b);
-            old_vec = V.row(a) - V.row(b);
-            old_vec_T = old_vec.transpose();
-            coeff = L.coeff(a, b);
-            trans_old_vec = R_a * old_vec_T;
-            diff_vec = new_vec - trans_old_vec;
-            diff = coeff * diff_vec.norm() * diff_vec.norm() * 1.0 / 6;
-            obj += diff;
-        }
-    }
     MTR_END("C++", "arap");
+
     return obj;
 
 }

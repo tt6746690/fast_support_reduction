@@ -9,6 +9,10 @@
 #include <igl/boundary_loop.h>
 #include <igl/winding_number.h>
 #include <igl/centroid.h>
+#include <igl/arap_dof.h>
+#include <igl/cotmatrix.h>
+#include <igl/covariance_scatter_matrix.h>
+#include <igl/mode.h>
 
 #include <omp.h>
 
@@ -56,6 +60,7 @@ void unzip(
     const Eigen::MatrixXd& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXi& P,
+    Eigen::MatrixXd& Td,
     Eigen::MatrixXf& T)
 {
     // Construct list of relative rotations in terms of quaternion
@@ -83,7 +88,6 @@ void unzip(
     }
 
     // Forward kinematics
-    Eigen::MatrixXd Td;
     igl::forward_kinematics(C, BE, P, dQ, Td);
     T = Td.cast<float>().eval();
 }
@@ -117,22 +121,53 @@ float reduce_support(
     Eigen::MatrixXd Vd = V.cast<double>().eval();
     Eigen::MatrixXd Wd = W.cast<double>().eval();
 
-    // // Cluster according to weights i.e. i-th vertex is in group `G(i)`
-    // Eigen::VectorXi G;
-    // {
-    //     Eigen::VectorXi S;
-    //     Eigen::VectorXd D;
-    //     int n_groups = 50;
-    //     igl::partition(Wd, n_groups, G, S, D);
-    // }
 
     Eigen::MatrixXd Md;
     igl::lbs_matrix(Vd, Wd, Md);
     Eigen::MatrixXf M;
     M = Md.cast<float>().eval();
 
-    Eigen::SparseMatrix<float> L, K;
-    arap_precompute(V, F, M, L, K);
+
+    // arap precompute: need to be moved to a seperate file later
+    // --------------------------------------------------------------------------------------------
+    Eigen::SparseMatrix<double> Ld, CSM;
+    igl::cotmatrix(Vd, Tet, Ld);
+    igl::covariance_scatter_matrix(Vd, Tet, igl::ARAP_ENERGY_TYPE_ELEMENTS, CSM);
+
+
+    // Get group sum scatter matrix, when applied sums all entries of the same
+    // group according to G
+    // Cluster according to weights
+    Eigen::VectorXi Gr;
+    {
+        Eigen::VectorXi S;
+        Eigen::VectorXd D;
+        igl::partition(Wd, 50, Gr, S, D);
+    }
+    Eigen::SparseMatrix<double> G_sum;
+    Eigen::Matrix<int, Eigen::Dynamic, 1> GG;
+    Eigen::MatrixXi GF(Tet.rows(), Tet.cols());
+    for(int i = 0; i < Tet.cols(); i++) {
+        Eigen::Matrix<int, Eigen::Dynamic, 1> GFi;
+        igl::slice(Gr, Tet.col(i), GFi);
+        GF.col(i) = GFi;
+    }
+    igl::mode<int>(GF, 2, GG);
+    Gr = GG;
+    igl::group_sum_matrix(Gr, G_sum);
+    Eigen::SparseMatrix<double> G_sum_dim;
+    igl::repdiag(G_sum, 3, G_sum_dim);
+    CSM = (G_sum_dim * CSM).eval();
+
+    Eigen::SparseMatrix<float> K;
+    K = CSM.cast<float>().eval();
+
+    Eigen::SparseMatrix<float> L;
+    L = Ld.cast<float>().eval();
+
+
+    // ----------------------------------------------------------------------------------------------
+
 
     // fast self intersection
     SelfIntersectionVolume vol(V, W, M, F, ren_width, ren_height, shader_dir);
@@ -198,6 +233,7 @@ float reduce_support(
     }
     
     // Energy function
+    Eigen::MatrixXd Td, Ud;
 
     int iter = 0;
     const std::function<float(Eigen::RowVectorXf&)> f =
@@ -207,20 +243,21 @@ float reduce_support(
         &M, &L, &K,                                 // arap
         &tau, &bnd,                                 // overhang
         &vol,                                       // fast self intersection
-        &PO, &G                                     // make it stand
+        &PO, &G,                                     // make it stand
+        &Md, &Ld, &CSM, &Td, &Ud   
     ](Eigen::RowVectorXf & X) -> float {
 
-        unzip(X, Cd, BE, P, T);
+        unzip(X, Cd, BE, P, Td, T);
         U = M * T;
 
-        double E_arap, E_overhang, E_intersect, E_stand;
+        float E_arap, E_overhang, E_intersect, E_stand;
 
         // compute projected centroid
         Eigen::Vector3f center;
         float volume;
         igl::centroid(U, F, center, volume);
         center(1) = U.col(1).minCoeff();
-        double wind = igl::winding_number(PO, G, center); // winding number to check inside or outside
+        float wind = igl::winding_number(PO, G, center); // winding number to check inside or outside
 
         // stand energy
         if (wind > 0.49) { /// just in case
@@ -253,7 +290,8 @@ float reduce_support(
                 E_intersect = self_intersection_2d(U, F);
             }
             
-            E_arap = arap_energy(V, T, M, config.is3d?Tet:F, L, K, config.is3d);
+            Ud = Md * Td;
+            E_arap = arap_energy(Ud, Td, Md, Tet, Ld, CSM, config.is3d);
 
         }
         else {
@@ -289,7 +327,7 @@ float reduce_support(
     glfwDestroyWindow(window);
     glfwTerminate();
 
-    unzip(X, Cd, BE, P, T);
+    unzip(X, Cd, BE, P, Td, T);
     U = M * T;
     overhang_energy_risky(U, F, config.dp, tau, config.unsafe);
 

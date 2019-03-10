@@ -9,6 +9,8 @@
 #include "element.h"
 #include "normalized_device_coordinate.h"
 
+#include "minitrace.h"
+
 using namespace Eigen;
 using namespace std;
 
@@ -25,6 +27,10 @@ const auto getfilepath = [](const string& name, const string& ext){
 int main(int argc, char* argv[]) {
 
     igl::opengl::glfw::Viewer viewer;
+
+    mtr_init("trace.json");
+
+    MTR_BEGIN("C++", "stress");
 
     string filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
@@ -122,10 +128,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    igl::jet(s, 0, s.maxCoeff()*0.25, C);
+    igl::jet(s, 200, s.maxCoeff()*0.015, C);
+
+    MTR_END("C++", "stress");
 
     // Plot the mesh
     viewer.data().set_mesh(V, F);
     viewer.data().set_colors(C);
     viewer.launch();
+
+    mtr_flush();
+    mtr_shutdown();
 }

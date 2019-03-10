@@ -80,6 +80,8 @@ process launch -- hand 1 1 1 45 20 100 1 10 0
 
 + euler angle
 + optimized forward kinematics
++ debug and profile stress simulation
++ user interface (steal code from forward kinematics assignment)
 + depth counter algorithm for self intersection volume computation
 
 
