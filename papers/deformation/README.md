@@ -34,8 +34,7 @@
         + rotate joint -> shrink volumne
         + artifact with too much rotation
 
-
-## Papers
+## papers
 
 + [2011_bounded_biharmonic_weights_for_real_time_deformation](2011_bounded_biharmonic_weights_for_real_time_deformation.pdf)
     + abstract

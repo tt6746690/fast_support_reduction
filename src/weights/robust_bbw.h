@@ -1,5 +1,7 @@
-#ifndef ROBUST_BBW_H
-#define ROBUST_BBW_H
+// copied from 
+//      https://github.com/alecjacobson/skeleton-poser/blob/master/robust_bbw.h
+//
+#pragma once
 #include <Eigen/Core>
 // Given a possibly artifact-ridden mesh (V,F) and a skeleton (C,BE), compute
 // bounded biharmonic weights for each bone. The mesh will be cleaned,
@@ -12,9 +14,11 @@
 //   C  #C by 3 list of join positions
 //   BE  #BE by 2 list of bone indices into C
 // Output:
+//   TV     modified vertex position
+//   TT     modified tetrahedron indices
+//   TW     weight matrix for tets
 //   W  #V by #BE list of bone weights
 // Returns true iff success
-//
 bool robust_bbw(
   const Eigen::MatrixXd & V,
   const Eigen::MatrixXi & F,
@@ -24,4 +28,3 @@ bool robust_bbw(
   Eigen::MatrixXi & TT,
   Eigen::MatrixXd & TW,
   Eigen::MatrixXd & W);
-#endif
