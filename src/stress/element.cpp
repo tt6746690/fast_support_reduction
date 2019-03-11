@@ -6,6 +6,8 @@
 #include <vector>
 #include <iostream>
 
+#include "minitrace.h"
+
 using namespace Eigen;
 using namespace std;
 
@@ -18,6 +20,7 @@ Element::Element(const Vector4i& ids)
 
 void Element::constructStiffnessMatrix(const MatrixXd& V, const MatrixXd& E, vector<Triplet<double>>& triplets)
 {
+
     // construct C matrix for each tet
     MatrixXd C(4, 4);
     C.block(0, 0, 1, 4) = RowVector4d(1.0, 1.0, 1.0, 1.0);
@@ -27,6 +30,7 @@ void Element::constructStiffnessMatrix(const MatrixXd& V, const MatrixXd& E, vec
     volume = C.determinant()*1.0/6;
     assert(volume > 0);
     C = C.inverse();
+
 
     // contruct B matrix for each tet
     for (int k = 0; k < 4; k++) {
@@ -60,15 +64,18 @@ void Element::constructStiffnessMatrix(const MatrixXd& V, const MatrixXd& E, vec
             Triplet trplt32(3 * nodesIds(m) + 2, 3 * nodesIds(n) + 1, Ki(3 * m + 2, 3 * n + 1));
             Triplet trplt33(3 * nodesIds(m) + 2, 3 * nodesIds(n) + 2, Ki(3 * m + 2, 3 * n + 2));
 
-            triplets.push_back(trplt11);
-            triplets.push_back(trplt12);
-            triplets.push_back(trplt13);
-            triplets.push_back(trplt21);
-            triplets.push_back(trplt22);
-            triplets.push_back(trplt23);
-            triplets.push_back(trplt31);
-            triplets.push_back(trplt32);
-            triplets.push_back(trplt33);
+
+            MTR_BEGIN("C++", "stress");
+            triplets.emplace_back(trplt11);
+            triplets.emplace_back(trplt12);
+            triplets.emplace_back(trplt13);
+            triplets.emplace_back(trplt21);
+            triplets.emplace_back(trplt22);
+            triplets.emplace_back(trplt23);
+            triplets.emplace_back(trplt31);
+            triplets.emplace_back(trplt32);
+            triplets.emplace_back(trplt33);
+            MTR_END("C++", "stress");
         }
     }
 

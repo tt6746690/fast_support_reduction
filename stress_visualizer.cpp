@@ -8,6 +8,7 @@
 
 #include "element.h"
 #include "normalized_device_coordinate.h"
+#include "minitrace.h"
 
 using namespace Eigen;
 using namespace std;
@@ -24,12 +25,17 @@ const auto getfilepath = [](const string& name, const string& ext){
 
 int main(int argc, char* argv[]) {
 
+    mtr_init("trace.json");
+
     igl::opengl::glfw::Viewer viewer;
 
     string filename = "small";
     if (argc > 1) { filename = string(argv[1]); }
     igl::readMESH(getfilepath(filename, "mesh"), V, Tet, F);
     int num_V = V.rows();
+
+    SparseMatrix<double> K;
+    K.resize(3*num_V, 3*num_V);
 
     // construct the elasticity matrix E
     MatrixXd E(6, 6);
@@ -52,16 +58,26 @@ int main(int argc, char* argv[]) {
         }
     }
 
+
     // construct the global stiffness matrix K
     vector<Triplet<double>> triplets;
+    triplets.reserve(Tet.rows() * 4 * 4 * 3 * 3);
+
     VectorXd f(3*num_V); // applied loads: gravity
     f.setZero();
     Vector4i nodesIds;
     vector<Element> elements;
+    elements.reserve(Tet.rows());
+
+    MTR_BEGIN("C++", "overall");
+
     for (int i = 0; i < Tet.rows(); i++) {
         nodesIds = Tet.row(i);
         Element ele(nodesIds);
+
+        MTR_BEGIN("C++", "element");
         ele.constructStiffnessMatrix(V, E, triplets);
+        MTR_END("C++", "element");
 
         // construct force vector f
         for (int j = 0; j < 4; j++) {
@@ -73,10 +89,13 @@ int main(int argc, char* argv[]) {
     }
 
 
-    SparseMatrix<double> K(3*num_V, 3*num_V);
+
+    MTR_BEGIN("C++", "setTri");
     K.setFromTriplets(triplets.begin(), triplets.end());
+    MTR_END("C++", "setTri");
 
 
+    MTR_BEGIN("C++", "add constraints");
     // apply constraints
     for (int i = 0; i < minVertices.size(); i++) {
         int idx = minVertices[i];
@@ -89,10 +108,15 @@ int main(int argc, char* argv[]) {
         f(3*idx+1) = 0;
         f(3*idx+2) = 0;
     }
+    MTR_END("C++", "add constraints");
 
+
+    MTR_BEGIN("C++", "solve");
     // solve for displacements at each vertex Kd = f
 	SimplicialLDLT<SparseMatrix<double>> solver(K);
 	VectorXd d = solver.solve(f); // displacements
+    MTR_END("C++", "solve");
+
 
     // analyze results
     VectorXi N(num_V);
@@ -124,8 +148,13 @@ int main(int argc, char* argv[]) {
 
     igl::jet(s, 0, s.maxCoeff()*0.25, C);
 
+    MTR_END("C++", "overall");
+
     // Plot the mesh
     viewer.data().set_mesh(V, F);
     viewer.data().set_colors(C);
     viewer.launch();
+
+    mtr_flush();
+    mtr_shutdown();
 }
