@@ -82,11 +82,11 @@ target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
 # add_executable(gl gl.cpp ${SRCFILES})
 # target_link_libraries(gl igl::core igl::opengl_glfw igl::png)
 
-add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
-target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png)
+# add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
+# target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png)
 
-add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
-target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)
+# add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
+# target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)
 
 if(WITH_VISUALIZE)
     add_definitions(-DVISUALIZE)

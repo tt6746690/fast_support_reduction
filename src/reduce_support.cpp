@@ -9,6 +9,12 @@
 #include <igl/boundary_loop.h>
 #include <igl/winding_number.h>
 #include <igl/centroid.h>
+#include <igl/cotmatrix.h>
+#include <igl/covariance_scatter_matrix.h>
+#include <igl/mode.h>
+#include <igl/group_sum_matrix.h>
+#include <igl/repdiag.h>
+#include <igl/arap_rhs.h>
 
 #include <omp.h>
 
@@ -126,13 +132,59 @@ float reduce_support(
     //     igl::partition(Wd, n_groups, G, S, D);
     // }
 
+
+
+    // arap precompute: need to be moved to a seperate file later
+    // --------------------------------------------------------------------------------------------
+
     Eigen::MatrixXd Md;
     igl::lbs_matrix(Vd, Wd, Md);
     Eigen::MatrixXf M;
     M = Md.cast<float>().eval();
 
-    Eigen::SparseMatrix<float> L, K;
-    arap_precompute(V, F, M, L, K);
+    Eigen::SparseMatrix<double> Ld, CSMd, Kd;
+    igl::cotmatrix(Vd, Tet, Ld);
+    // igl::arap_linear_block(Vd, Tet, 0, igl::ARAP_ENERGY_TYPE_ELEMENTS, CSM);
+    igl::covariance_scatter_matrix(Vd, Tet, igl::ARAP_ENERGY_TYPE_ELEMENTS, CSMd);
+    igl::arap_rhs(Vd, Tet, 3, igl::ARAP_ENERGY_TYPE_ELEMENTS, Kd);
+
+    // Get group sum scatter matrix, when applied sums all entries of the same
+    // group according to G
+    // Cluster according to weights
+    Eigen::VectorXi Gr;
+    {
+        Eigen::VectorXi S;
+        Eigen::VectorXd D;
+        igl::partition(Wd, 20, Gr, S, D);
+    }
+    Eigen::SparseMatrix<double> G_sum;
+    Eigen::Matrix<int, Eigen::Dynamic, 1> GG;
+    Eigen::MatrixXi GF(Tet.rows(), Tet.cols());
+    for(int i = 0; i < Tet.cols(); i++) {
+        Eigen::Matrix<int, Eigen::Dynamic, 1> GFi;
+        igl::slice(Gr, Tet.col(i), GFi);
+        GF.col(i) = GFi;
+    }
+    igl::mode<int>(GF, 2, GG);
+    Gr = GG;
+    igl::group_sum_matrix(Gr, G_sum);
+    Eigen::SparseMatrix<double> G_sum_dim;
+    igl::repdiag(G_sum, 3, G_sum_dim);
+    CSMd = (G_sum_dim * CSMd).eval();
+
+    Eigen::SparseMatrix<float> K;
+    K = Kd.cast<float>().eval();
+
+    Eigen::SparseMatrix<float> CSM;
+    CSM = CSMd.cast<float>().eval();
+
+    Eigen::SparseMatrix<float> L;
+    L = Ld.cast<float>().eval();
+
+    // ----------------------------------------------------------------------------------------------
+
+
+
 
     // fast self intersection
     SelfIntersectionVolume vol(V, W, M, F, ren_width, ren_height, shader_dir);
@@ -204,7 +256,7 @@ float reduce_support(
        [&iter, &config, &V,
         &Cd, &BE, &P,                               // forward kinematics
         &T, &F, &U, &Tet,                           // mesh
-        &M, &L, &K,                                 // arap
+        &M, &L, &K, &CSM, &Gr,                               // arap
         &tau, &bnd,                                 // overhang
         &vol,                                       // fast self intersection
         &PO, &G                                     // make it stand
@@ -253,7 +305,7 @@ float reduce_support(
                 E_intersect = self_intersection_2d(U, F);
             }
             
-            E_arap = arap_energy(V, T, M, config.is3d?Tet:F, L, K, config.is3d);
+            E_arap = arap_energy(U, K, Gr, L, CSM, config.is3d);
 
         }
         else {

@@ -10,6 +10,7 @@
 #include <igl/min_quad_with_fixed.h>
 #include <igl/polar_svd3x3.h>
 #include <igl/fit_rotations.h>
+#include <igl/columnize.h>
 
 #include <vector>
 #include <utility>
@@ -138,80 +139,67 @@ void arap_single_iteration(
 
 
 template<
-    typename DerivedV,
-    typename DerivedT,
-    typename DerivedM,
-    typename DerivedF,
+    typename DerivedU,
+    typename DerivedK,
+    typename DerivedG,
     typename ScalarL,
-    typename ScalarK>
+    typename ScalarCSM>
 double arap_energy(
-    const Eigen::MatrixBase<DerivedV>& V,
-    const Eigen::MatrixBase<DerivedT>& T,
-    const Eigen::MatrixBase<DerivedM>& M,
-    const Eigen::MatrixBase<DerivedF>& F,
+    const Eigen::MatrixBase<DerivedU>& U,
+    const Eigen::SparseMatrix<DerivedK>& K,
+    const Eigen::MatrixBase<DerivedG>& G,
     const Eigen::SparseMatrix<ScalarL>& L,
-    const Eigen::SparseMatrix<ScalarK>& K,
+    const Eigen::SparseMatrix<ScalarCSM>& CSM,
     bool is3d)
 {
+
     MTR_BEGIN("C++", "arap");
 
-    typedef typename DerivedT::Scalar ScalarT;
+    typedef typename DerivedU::Scalar ScalarT;
     typedef Eigen::Matrix<ScalarT, Eigen::Dynamic, Eigen::Dynamic> MatrixXT;
     typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
     typedef Eigen::Matrix<ScalarT, 3, 1> Vector3T;
 
-    // construct matrix C
-    MatrixXT U, C;
-    U = M * T;
-    C = K.transpose() * U;
+    const int n = U.rows();
+    const auto & Udim = U.replicate(3, 1);
+    MatrixXT S = CSM * Udim;
+    const int Rdim = 3;
+    MatrixXT R(Rdim, CSM.rows());
+    MatrixXT Sn = S / S.array().abs().maxCoeff(); // normalize to prevent numerical issues
 
+    igl::fit_rotations(Sn, true, R);
 
-    MatrixXT R(C.cols(), C.rows());
-    
-    // construct matrix R: fit local rotation
-    const int size = U.rows();
-    Matrix3T Ck, Rk;
-    for (int k = 0; k < size; k++) {
-        Ck = C.block(3 * k, 0, 3, 3);
-        igl::polar_svd3x3(Ck, Rk);
-        R.block(0, 3 * k, 3, 3) = Rk;
+    const int num_rots = K.cols() / Rdim / Rdim;
+    MatrixXT eff_R;
+    eff_R.resize(Rdim, num_rots * Rdim);
+
+    for (int r = 0; r < num_rots; r++) {
+        eff_R.block(0, Rdim * r, Rdim, Rdim) = R.block(0, Rdim * G(r), Rdim, Rdim);
+    }
+    MatrixXT Rcol;
+    igl::columnize(eff_R, num_rots, 2, Rcol);
+    MatrixXT Bcol = - K * Rcol;
+    MatrixXT Bc(n, 3);
+    for(int c = 0; c < 3; c++) {
+        Bc.block(0, c, n, 1) = Bcol.block(c * n, 0, n, 1);
     }
 
+    Matrix3T M1 = U.transpose() * L * U; //VLV
+    Matrix3T M2 = U.transpose() * Bc; // RKV
 
-    lii edge_indices;
-    if (is3d) {
-        edge_indices = lii{{0, 1}, {0, 2}, {0, 3}, {1, 2}, {1, 3}, {2, 3}}; // a tetrahedron has six edges
-    } else {
-        edge_indices = lii{{0, 1}, {1, 2}, {2, 0}};
-    }
+    ScalarT obj = - 0.5 * M1.trace() + M2.trace();
 
-
-    // compute the arap energy
-    // E_{arap}(\bV') = \frac{1}{2} \sum_{f\in \bF} \sum_{(i,j)\in f} c_{ijf} || (\bv_i' - \bv_j') - \bR_f(\bv_i - \bv_j) ||^2
-
-    double obj = 0;
-
-    #pragma omp parallel for reduction(+:obj)
-    for (int i = 0; i < F.rows(); i++) {
-        for (auto p : edge_indices) {
-            int a, b;
-            double coeff, diff;
-            Matrix3T R_a;
-            Vector3T new_vec, old_vec, old_vec_T, trans_old_vec, diff_vec;
-            a = F(i, p.first);
-            b = F(i, p.second);
-            R_a = R.block(0, 3 * a, 3, 3).transpose();
-            new_vec = U.row(a) - U.row(b);
-            old_vec = V.row(a) - V.row(b);
-            old_vec_T = old_vec.transpose();
-            coeff = L.coeff(a, b);
-            trans_old_vec = R_a * old_vec_T;
-            diff_vec = new_vec - trans_old_vec;
-            diff = coeff * diff_vec.norm() * diff_vec.norm() * 1.0 / 6;
-            obj += diff;
-        }
-    }
     MTR_END("C++", "arap");
+
+    // debug
+    // std::cout << R.block(0, 0, 3, 3) << std::endl;
+    // std::cout << "M1 trace: " << M1.trace() << std::endl;
+    // std::cout << "M2 trace: " << M2.trace() << std::endl;
+    // std::cout << "L: " << L.rows() << " x " << L.cols() << std::endl;
+    // std::cout << "R: " << R.rows() << " x " << R.cols() << std::endl;
+    // std::cout << "CSM: " << CSM.rows() << " x " << CSM.cols() << std::endl;
+    // std::cout << "S: " << S.rows() << " x " << S.cols() << std::endl;
+
     return obj;
 
 }

@@ -119,6 +119,7 @@ int main(int argc, char*argv[])
 
     igl::readTGF(getfilepath(filename, "tgf"), C, BE);
 
+
     {   // map vertex position to first quadrant
         RowVector3d min = V.colwise().minCoeff();
         V = V.rowwise() - min;
