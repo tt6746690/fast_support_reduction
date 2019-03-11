@@ -157,6 +157,7 @@ double arap_energy(
 
     typedef typename DerivedU::Scalar ScalarT;
     typedef Eigen::Matrix<ScalarT, Eigen::Dynamic, Eigen::Dynamic> MatrixXT;
+    typedef Eigen::Matrix<ScalarT, Eigen::Dynamic, 1> VectorXT;
     typedef Eigen::Matrix<ScalarT, 3, 3> Matrix3T;
     typedef Eigen::Matrix<ScalarT, 3, 1> Vector3T;
 
@@ -176,9 +177,12 @@ double arap_energy(
     for (int r = 0; r < num_rots; r++) {
         eff_R.block(0, Rdim * r, Rdim, Rdim) = R.block(0, Rdim * G(r), Rdim, Rdim);
     }
-    MatrixXT Rcol;
+    
+    VectorXT Rcol;
     igl::columnize(eff_R, num_rots, 2, Rcol);
-    MatrixXT Bcol = - K * Rcol;
+    VectorXT Bcol = - K * Rcol;
+
+
     MatrixXT Bc(n, 3);
     for(int c = 0; c < 3; c++) {
         Bc.block(0, c, n, 1) = Bcol.block(c * n, 0, n, 1);
@@ -190,6 +194,7 @@ double arap_energy(
     ScalarT obj = - 0.5 * M1.trace() + M2.trace();
 
     MTR_END("C++", "arap");
+
 
     return obj;
 
