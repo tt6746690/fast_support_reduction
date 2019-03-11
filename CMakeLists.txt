@@ -20,13 +20,6 @@ else()
 endif()
 
 
-# # openmp 
-# SET(OpenMP_C_FLAGS       "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
-# SET(OpenMP_C_LIB_NAMES   "omp")
-# SET(OpenMP_CXX_FLAGS     "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
-# SET(OpenMP_CXX_LIB_NAMES "omp")
-# SET(OpenMP_omp_LIBRARY   "/usr/local/opt/libomp/lib/libomp.dylib")
-
 find_package(OpenMP REQUIRED)
 
 # libigl
@@ -77,13 +70,12 @@ file(GLOB SRCFILES
 
 add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png igl::tetgen)
-target_link_libraries(support_reduction OpenMP::OpenMP_CXX)
 
 # add_executable(gl gl.cpp ${SRCFILES})
-# target_link_libraries(gl igl::core igl::opengl_glfw igl::png)
+# target_link_libraries(gl igl::core igl::opengl_glfw igl::png igl::tetgen)
 
 # add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
-# target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png)
+# target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png igl::tetgen)
 
 # add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
 # target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)

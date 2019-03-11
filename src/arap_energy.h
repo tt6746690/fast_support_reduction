@@ -165,9 +165,9 @@ double arap_energy(
     MatrixXT S = CSM * Udim;
     const int Rdim = 3;
     MatrixXT R(Rdim, CSM.rows());
-    MatrixXT Sn = S / S.array().abs().maxCoeff(); // normalize to prevent numerical issues
+    S /= S.array().abs().maxCoeff(); // normalize to prevent numerical issues
 
-    igl::fit_rotations(Sn, true, R);
+    igl::fit_rotations(S, true, R);
 
     const int num_rots = K.cols() / Rdim / Rdim;
     MatrixXT eff_R;
@@ -190,15 +190,6 @@ double arap_energy(
     ScalarT obj = - 0.5 * M1.trace() + M2.trace();
 
     MTR_END("C++", "arap");
-
-    // debug
-    // std::cout << R.block(0, 0, 3, 3) << std::endl;
-    // std::cout << "M1 trace: " << M1.trace() << std::endl;
-    // std::cout << "M2 trace: " << M2.trace() << std::endl;
-    // std::cout << "L: " << L.rows() << " x " << L.cols() << std::endl;
-    // std::cout << "R: " << R.rows() << " x " << R.cols() << std::endl;
-    // std::cout << "CSM: " << CSM.rows() << " x " << CSM.cols() << std::endl;
-    // std::cout << "S: " << S.rows() << " x " << S.cols() << std::endl;
 
     return obj;
 
