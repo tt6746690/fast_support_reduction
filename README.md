@@ -8,6 +8,9 @@ git clone --recursive git@github.com:tt6746690/fast_support_reduction.git
 #       https://github.com/hrydgard/minitrace
 #       https://www.chromium.org/developers/how-tos/trace-event-profiling-tool
 
+# dependencies
+brew install cgal
+
 mkdir build && cd build
 
 # brew install ninja
@@ -28,16 +31,16 @@ output file: ../data/dinosaur.mesh ../data/dinosaur.dmat
 --data_dir ../data/ \
 --filename bb-bunny \
 --n_fixed_bones 5 \
---pso_iters 5 \
---pso_population 20 \
+--pso_iters 1 \
+--pso_population 1 \
 --rotation_angle 50 \
 --c_arap 90 \
 --c_overhang 20 \
 --c_intersect 10000
 
 # debugging
-lldb build/support_reduction
-process launch -- hand 1 1 1 45 20 100 1 10 0
+lldb support_reduction
+process launch -- --data_dir ../data/ --filename bb-bunny --n_fixed_bones 5 --pso_iters 1 --pso_population 1 --rotation_angle 50
 ```
 
 ### Layout

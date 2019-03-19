@@ -19,14 +19,13 @@
 
 SelfIntersectionVolume::SelfIntersectionVolume(
     const Eigen::MatrixXf& V,
-    const Eigen::MatrixXf& W,
-    const Eigen::MatrixXf& M,
     const Eigen::MatrixXi& F,
+    const Eigen::MatrixXf& W,
     float width,
     float height,
     std::string shader_dir)
-    :   V(V), W(W), M(M), F(F),
-        width(width), height(height),
+    :   width(width), height(height),
+        V(V), F(F), W(W),
         peel_shader({shader_dir+"peel.vs"}, {shader_dir+"peel.fs"}),
         intersection_shader({shader_dir+"intersection.vs"}, {shader_dir+"intersection.fs"})
 {
@@ -41,13 +40,6 @@ SelfIntersectionVolume::SelfIntersectionVolume(
     ren_tex   = new GLuint[2];
     ren_dtex  = new GLuint[2];
     volume_buffer = new unsigned char[4*width*height];
-
-    num_bones = W.cols();
-    T.resize(4,num_bones*4); // col major tho
-    Eigen::Matrix4f Ti = Eigen::MatrixXf::Identity(4,4);
-    for (int i = 0; i < num_bones; i++) {
-        T.block(0, 4*i, 4, 4) = Ti;
-    }
 }
 
 SelfIntersectionVolume::~SelfIntersectionVolume()
@@ -81,8 +73,6 @@ void SelfIntersectionVolume::prepare()
     peel_shader.compile();
     intersection_shader.compile();
 
-    // igl::opengl::vertex_array(V, F, vao, vbo, ebo);
-
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> VR = V;
     Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> FR = F;
     Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> VWR(VR.rows(),VR.cols()+W.cols());
@@ -102,7 +92,7 @@ void SelfIntersectionVolume::prepare()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (GLvoid*)0);
     glEnableVertexAttribArray(0);
 
-    for (int i = 0; i < num_bones; i++) {
+    for (int i = 0; i <  W.cols(); i++) {
         glVertexAttribPointer(i+1, 1, GL_FLOAT, GL_FALSE, stride, (GLvoid*)((3+i)*sizeof(float)));
         glEnableVertexAttribArray(i+1);
     }
@@ -126,7 +116,7 @@ void SelfIntersectionVolume::prepare()
 
 
 float SelfIntersectionVolume::compute(
-    const Eigen::MatrixXf& T_new)
+    const Eigen::MatrixXf& T)
 {
     MTR_BEGIN("C++", "fast self intersection");
 
@@ -155,8 +145,8 @@ float SelfIntersectionVolume::compute(
         peel_shader.set_float("width", width);
         peel_shader.set_float("height", height);
         peel_shader.set_mat4("model_view_proj", mvp);
-        peel_shader.set_int("num_bones", num_bones);
-        peel_shader.set_mat4_stack("T", T_new);
+        peel_shader.set_int("num_bones",  W.cols());
+        peel_shader.set_mat4_stack("T", T);
     }
 
 
@@ -168,7 +158,10 @@ float SelfIntersectionVolume::compute(
             default: which_pass = 2;
         }
 
-        // glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
+#ifdef VERBOSE
+        glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
+#endif
+
         // depth peeling
 
         glBeginQuery(GL_ANY_SAMPLES_PASSED, query_id);
@@ -195,9 +188,11 @@ float SelfIntersectionVolume::compute(
         glDrawElements(GL_TRIANGLES, F.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
+#ifdef VERBOSE
         glEndQuery(GL_TIME_ELAPSED);
-        // glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
-        // std::cout<<"peel shader (ns): "<<gpu_time_ns<<'\n';
+        glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
+        std::cout<<"peel shader (ns): "<<gpu_time_ns<<'\n';
+#endif
 
         if (save_png) {
             igl::png::render_to_png(
@@ -211,7 +206,6 @@ float SelfIntersectionVolume::compute(
         
         if (any_samples_passed != 1) {
             glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
-            // std::cout<<"every layer peeled in "<<pass+1<<" passes"<<std::endl;
             break;
         }
 
@@ -220,11 +214,12 @@ float SelfIntersectionVolume::compute(
         if (which_pass != 2)
             continue;
 
-        // glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
+#ifdef VERBOSE
+        glBeginQuery(GL_TIME_ELAPSED, query_benchmark);
+#endif
 
         glBindFramebuffer(GL_FRAMEBUFFER, ren_fbo[pass%2]);
         glDepthFunc(GL_ALWAYS);
-
 
         if (recompile) intersection_shader.compile();
         intersection_shader.use();
@@ -255,9 +250,11 @@ float SelfIntersectionVolume::compute(
 
         quad.draw();
 
+#ifdef VERBOSE
         glEndQuery(GL_TIME_ELAPSED);
-        // glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
-        // std::cout<<"intersection shader (ns): "<<gpu_time_ns<<'\n';
+        glGetQueryObjectuiv(query_benchmark, GL_QUERY_RESULT, &gpu_time_ns);
+        std::cout<<"intersection shader (ns): "<<gpu_time_ns<<'\n';
+#endif
 
         if (save_png) {
             igl::png::render_to_png(
@@ -267,20 +264,20 @@ float SelfIntersectionVolume::compute(
         }
     }
 
+    // Compute self-intersection volume by 
+    //      1. compute percentage of self-intersection by reading from red channel of color buffer
+    //      2. compute the actual self-intersection volume
 
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, volume_buffer);
 
     int accu = 0;
-    float intersection_percentage = 0.;
     for (int i = 0; i < width; ++i) {
         for (int j = 0; j < height; ++j) {
             accu += volume_buffer[4*(j*(int)width+i)]; // read red channel
         }
     }
-    intersection_percentage = accu * 1. / (255.0 * width * height);
+    float vol = ortho_box_volume * (accu/(255.0*width*height));
 
     MTR_END("C++", "fast self intersection");
-
-    return intersection_percentage * ortho_box_volume;
-    
+    return vol;
 }

@@ -19,6 +19,7 @@
 #include "reduce_support.h"
 #include "overhang_energy.h"
 #include "minitrace.h"
+#include "support_polygon.h"
 
 #include <cstdio>
 #include <iostream>
@@ -99,7 +100,9 @@ int main(int argc, char*argv[])
 
 
     auto result = parser.parse(clara::Args(argc, argv));
-    if (!result) { cerr<<"Error in command line: "<<result.errorMessage()<<'\n'; exit(1); }
+    if (!result) { 
+        cerr<<"Error in command line: "<<result.errorMessage()<<'\n'; exit(1); 
+    }
     if (show_help) { cout<<parser; exit(0); };
 
     mtr_init("trace.json");
@@ -116,7 +119,6 @@ int main(int argc, char*argv[])
 
     igl::readDMAT(getfilepath(filename, "dmat"), W);
     igl::normalize_row_sums(W, W);  // normalization before LBS !!
-
     igl::readTGF(getfilepath(filename, "tgf"), C, BE);
 
 
@@ -144,6 +146,11 @@ int main(int argc, char*argv[])
         fixed_bones.resize(n_fixed_bones);
     }
 
+    Eigen::MatrixXd P;
+    Eigen::MatrixXi G;
+    support_polygon(V, 1, P, G);
+    P.rowwise() -= RowVector3d(0, (V.maxCoeff() - V.minCoeff())*0.05, 0);
+
 
     ReduceSupportConfig<double> config;
     config.is3d = is3d;
@@ -158,31 +165,47 @@ int main(int argc, char*argv[])
     config.c_intersect = c_intersect;
     config.display = true;
 
-    // compute support polygon
-    // extract fixed vertices
-    vector<int> minVertices;
-    double tolerance = (V.col(1).maxCoeff() - V.col(1).minCoeff()) * 0.02;
-    double min_Y = V.col(1).minCoeff();
-    for (int i = 0; i < V.rows(); i++) {
-        if (abs(V(i, 1) - min_Y) < tolerance) {
-            minVertices.push_back(i);
-        }
+
+    //////////////////////////////////////////////////////////////////////
+    //      Viewer
+    //////////////////////////////////////////////////////////////////////
+
+    igl::opengl::glfw::Viewer viewer;
+
+    //  obj_id       handle to mesh for `.obj`
+    //  ground_id   handle to convex hull of mesh
+    int obj_id, ground_id;
+    {
+        // clear all ViewerData
+        viewer.selected_data_index = viewer.data_list.size()-1;
+        while(viewer.erase_mesh(viewer.selected_data_index)){};
+        viewer.data().clear();
+        
+        obj_id = viewer.append_mesh();
+        viewer.data().set_mesh(U, F);
+        ground_id = viewer.append_mesh();
+        viewer.data().set_mesh(P, G);
+        viewer.selected_data_index = viewer.mesh_index(obj_id);
     }
-    // flatten
-    MatrixXd W_F;
-    W_F.resize(minVertices.size(), 3);
-    for (int i = 0; i < minVertices.size(); i++) {
-        W_F.block(i, 0, 1, 3) = V.row(minVertices[i]);
-    }
-    W_F.col(1).setConstant(min_Y);
-    MatrixXd P;
-    MatrixXi G;
-    igl::copyleft::cgal::convex_hull(W_F, P, G);
+    const auto draw_ground = [&](igl::opengl::glfw::Viewer &viewer) {
+        Vector3d center;
+        igl::centroid(U, F, center);
 
+        // shift-down by some `offset` for better visualization
+        center(1) = P.col(1).minCoeff();
+        
+        viewer.selected_data_index = viewer.mesh_index(ground_id);
+        viewer.data().clear();
+        viewer.data().set_mesh(P, G);
+        viewer.data().add_points(center.transpose(), ::red);
+        viewer.selected_data_index = viewer.mesh_index(obj_id);
+    };
 
-    reduce_support(V, Tet, F, C, BE, W, P, G, config, T, U);
-
-
+    const auto set_color = [&](igl::opengl::glfw::Viewer &viewer) {
+        Eigen::MatrixXd C;
+        igl::jet(W.col(selected).eval(),true,C);
+        viewer.data().set_colors(C);
+    };
     const auto draw_coordsys = [&](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& V) {
         Eigen::Vector3d min = V.colwise().minCoeff();
         Eigen::Vector3d max = V.colwise().maxCoeff();
@@ -199,7 +222,6 @@ int main(int argc, char*argv[])
             viewer.data().add_edges(VCoord.row(0), VCoord.row(i), ::green);
         }
     };
-
     const auto draw_fixed_bones = [](
         igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE, std::vector<int>& fixed_bones) {
         for (int i = 0; i < fixed_bones.size(); ++i) {
@@ -207,7 +229,6 @@ int main(int argc, char*argv[])
             viewer.data().add_edges(C.row(edge(0)), C.row(edge(1)), ::red);
         }
     };
-
     const auto draw_bones = [](
             igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE) {
         viewer.data().add_points(C, ::sea_green);
@@ -216,49 +237,55 @@ int main(int argc, char*argv[])
         }
     };
 
-    const auto draw_risky = [&config](igl::opengl::glfw::Viewer &viewer, const Eigen::MatrixXd& V) {
-        for (int i = 0; i < config.unsafe.rows(); ++i) {
-            viewer.data().add_edges(V.row(config.unsafe(i, 0)), V.row(config.unsafe(i, 1)), ::red);
-        }
-    };
-
-    // visualize the deformed mesh
-    igl::opengl::glfw::Viewer viewer;
-
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1000;
     viewer.data().point_size = 15;
+    viewer.callback_key_down = [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
+        switch(key) {
+            case '.':
+                set_color(viewer);
+                selected++;
+                selected = std::min(std::max(selected,0),(int)W.cols()-1);
+                break;
+            case ',':
+                set_color(viewer);
+                selected--;
+                selected = std::min(std::max(selected,0),(int)W.cols()-1);
+                break;
+            case ' ':
+                V = U;
+                reduce_support(V, Tet, F, C, BE, W, config, T, U);
 
-    // draw_coordsys(viewer, U);
+                // reset mesh 
+                viewer.data().clear();
+                viewer.data().set_mesh(U, F);
 
-    // deformed bones
-    MatrixXd CT;
-    MatrixXi BET;
-    igl::deform_skeleton(C, BE, T, CT, BET);
-    draw_bones(viewer, CT, BET);
-    draw_fixed_bones(viewer, CT, BET, fixed_bones);
+                Eigen::MatrixXd CT;
+                Eigen::MatrixXi BET;
+                igl::deform_skeleton(C, BE, T, CT, BET);
 
+                draw_ground(viewer);
+                draw_bones(viewer, CT, BET);
+                draw_coordsys(viewer, U);
+                draw_fixed_bones(viewer, CT, BET, fixed_bones);
 
-    double offset = (U.maxCoeff() - U.minCoeff())*0.05; // just for better visualization
-    P.rowwise() -= RowVector3d(0, offset, 0);
+                igl::writeOBJ(getfilepath(filename+"_deformed_"+std::to_string(pso_iters), "obj"), U, F);
+                break;              
+        }
+        return true;
+    };;
 
-    // compute projected centroid
-    Vector3d center;
-    double volume;
-    igl::centroid(U, F, center, volume);
-    center(1) = W_F.col(1).minCoeff() - offset;
-    viewer.data().add_points(center.transpose(), ::red);
+    draw_ground(viewer);
+    draw_bones(viewer, C, BE);
+    draw_coordsys(viewer, U);
+    draw_fixed_bones(viewer, C, BE, fixed_bones);
 
-
-    // visualize the deformed mesh and support polygon
-    // Concatenate (U, F) and (P, G) into (V_cat, F_cat)
-    Eigen::MatrixXd U_cat(U.rows()+P.rows(), U.cols());
-    U_cat << U, P;
-    Eigen::MatrixXi F_cat(F.rows()+G.rows(), F.cols());
-    F_cat << F, (G.array()+U.rows());
-
-    viewer.data().set_mesh(U_cat, F_cat);
+    std::cout<<
+        "Press '.' to show next weight function.\n"<<
+        "Press ',' to show previous weight function.\n"<<
+        "Press [space] to start support reduction.\n";
+    viewer.launch();
 
 
     viewer.launch();

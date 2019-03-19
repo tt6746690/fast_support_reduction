@@ -36,6 +36,10 @@
 
 #include "minitrace.h"
 
+#ifdef __APPLE__
+    #define GL_SILENCE_DEPRECATION
+#endif
+
 
 using namespace Eigen;
 using namespace std;

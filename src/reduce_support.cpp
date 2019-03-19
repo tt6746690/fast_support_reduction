@@ -15,6 +15,7 @@
 #include <igl/group_sum_matrix.h>
 #include <igl/repdiag.h>
 #include <igl/arap_rhs.h>
+#include <igl/opengl/glfw/background_window.h>
 
 #include <omp.h>
 
@@ -22,18 +23,16 @@
 #include <cmath>
 #include <functional>
 #include <vector>
+#include <iostream>
 
 #include "reduce_support.h"
 #include "overhang_energy.h"
 #include "arap_energy.h"
 #include "self_intersection.h"
 #include "minitrace.h"
-
 #include "intersection_volume.h"
+#include "support_polygon.h"
 
-#include <igl/opengl/glfw/background_window.h>
-
-#include <iostream>
 
 const int ren_width  = 400;
 const int ren_height = 400;
@@ -71,16 +70,6 @@ void unzip(
     Eigen::RowVector3f th;
     for (int j = 0; j < BE.rows(); ++j) {
         th = X.segment(3*j, 3);
-
-        /*
-        // this stops VS2017 from complaining about mixing numeric types
-        Eigen::Quaternionf qf = Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *
-            Eigen::AngleAxisf(th(1), Eigen::Vector3f::UnitY()) *
-            Eigen::AngleAxisf(th(2), Eigen::Vector3f::UnitZ());
-        Eigen::Quaterniond qd = qf.cast<double>();
-        dQ.emplace_back(qd);
-        */
-
         dQ.emplace_back(
             Eigen::AngleAxisf(th(0), Eigen::Vector3f::UnitX()) *
             Eigen::AngleAxisf(th(1), Eigen::Vector3f::UnitY()) *
@@ -102,8 +91,6 @@ float reduce_support(
     const Eigen::MatrixXf& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXf& W,
-    const Eigen::MatrixXf& PO,
-    const Eigen::MatrixXi& G,
     ReduceSupportConfig<float>& config,
     Eigen::MatrixXf& T,
     Eigen::MatrixXf& U)
@@ -123,16 +110,10 @@ float reduce_support(
     Eigen::MatrixXd Vd = V.cast<double>().eval();
     Eigen::MatrixXd Wd = W.cast<double>().eval();
 
-    // // Cluster according to weights i.e. i-th vertex is in group `G(i)`
-    // Eigen::VectorXi G;
-    // {
-    //     Eigen::VectorXi S;
-    //     Eigen::VectorXd D;
-    //     int n_groups = 50;
-    //     igl::partition(Wd, n_groups, G, S, D);
-    // }
-
-
+    // support polygon
+    Eigen::MatrixXf PO;
+    Eigen::MatrixXi G;
+    support_polygon(V, 1, PO, G);
 
     // arap precompute: need to be moved to a seperate file later
     // --------------------------------------------------------------------------------------------
@@ -144,13 +125,11 @@ float reduce_support(
 
     Eigen::SparseMatrix<double> Ld, CSMd, Kd;
     igl::cotmatrix(Vd, Tet, Ld);
-    // igl::arap_linear_block(Vd, Tet, 0, igl::ARAP_ENERGY_TYPE_ELEMENTS, CSM);
     igl::covariance_scatter_matrix(Vd, Tet, igl::ARAP_ENERGY_TYPE_ELEMENTS, CSMd);
     igl::arap_rhs(Vd, Tet, 3, igl::ARAP_ENERGY_TYPE_ELEMENTS, Kd);
 
     // Get group sum scatter matrix, when applied sums all entries of the same
-    // group according to G
-    // Cluster according to weights
+    // group according to G. Cluster according to weights
     Eigen::VectorXi Gr;
     {
         Eigen::VectorXi S;
@@ -182,14 +161,10 @@ float reduce_support(
     L = Ld.cast<float>().eval();
 
     // ----------------------------------------------------------------------------------------------
-
-
-
+    // ----------------------------------------------------------------------------------------------
 
     // fast self intersection
-    SelfIntersectionVolume vol(V, W, M, F, ren_width, ren_height, shader_dir);
-    GLFWwindow* window;
-    igl::opengl::glfw::background_window(window); // setup window and context
+    SelfIntersectionVolume vol(V, F, W, ren_width, ren_height, shader_dir);
     vol.prepare();
 
     // Overhang
@@ -338,9 +313,6 @@ float reduce_support(
 
     std::cout << "final fX: " << fX << '\n';
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
-
     unzip(X, Cd, BE, P, T);
     U = M * T;
     overhang_energy_risky(U, F, config.dp, tau, config.unsafe);
@@ -356,8 +328,6 @@ double reduce_support(
     const Eigen::MatrixXd& C,
     const Eigen::MatrixXi& BE,
     const Eigen::MatrixXd& W,
-    const Eigen::MatrixXd& PO,
-    const Eigen::MatrixXi& G,
     ReduceSupportConfig<double>& config,
     Eigen::MatrixXd& T,
     Eigen::MatrixXd& U)
@@ -367,9 +337,8 @@ double reduce_support(
     Eigen::MatrixXf Wf = W.cast<float>();
     Eigen::MatrixXf Tf = T.cast<float>();
     Eigen::MatrixXf Uf = U.cast<float>();
-    Eigen::MatrixXf POf = PO.cast<float>();
     ReduceSupportConfig<float> configf(config);
-    float fX = reduce_support(Vf, Tet, F, Cf, BE, Wf, POf, G, configf, Tf, Uf);
+    float fX = reduce_support(Vf, Tet, F, Cf, BE, Wf, configf, Tf, Uf);
     config = configf;
     T = Tf.cast<double>();
     U = Uf.cast<double>();

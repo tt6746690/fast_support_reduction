@@ -85,7 +85,18 @@
         "bvh": "cpp",
         "fft": "cpp",
         "numericaldiff": "cpp",
-        "hash_map": "cpp"
+        "hash_map": "cpp",
+        "clocale": "cpp",
+        "csignal": "cpp",
+        "strstream": "cpp",
+        "typeindex": "cpp",
+        "adolcforward": "cpp",
+        "alignedvector3": "cpp",
+        "autodiff": "cpp",
+        "kroneckerproduct": "cpp",
+        "mprealsupport": "cpp",
+        "openglsupport": "cpp",
+        "splines": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled",
     "C_Cpp.configurationWarnings": "Disabled"

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.1)
 project(fast_support_reduction)
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,17 +21,25 @@ else()
 endif()
 
 
+
+# SET(OpenMP_C_FLAGS       "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+# SET(OpenMP_C_LIB_NAMES   "omp")
+# SET(OpenMP_CXX_FLAGS     "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+# SET(OpenMP_CXX_LIB_NAMES "omp")
+# SET(OpenMP_omp_LIBRARY   "/usr/local/opt/libomp/lib/libomp.dylib")
 find_package(OpenMP REQUIRED)
 
-# libigl
 
+# libigl
 option(LIBIGL_WITH_OPENGL            "Use OpenGL"         ON)
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"           ON)
 option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
 option(LIBIGL_WITH_TETGEN            "Use Tetgen"         ON)
 option(LIBIGL_WITH_TRIANGLE          "Use Triangle"       ON)
 option(LIBIGL_WITH_PNG               "Use PNG"            ON)
+option(LIBIGL_WITH_CGAL              "Use CGAL"           ON)
 find_package(LIBIGL REQUIRED QUIET)
+
 
 # cgal
 
@@ -79,6 +88,7 @@ target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png igl:
 
 # add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
 # target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)
+
 
 if(WITH_VISUALIZE)
     add_definitions(-DVISUALIZE)
