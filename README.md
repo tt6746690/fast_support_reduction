@@ -25,22 +25,22 @@ input files: ../dinosaur.obj ../dinosaur.tgf
 output file: ../data/dinosaur.mesh ../data/dinosaur.dmat
 
 
-# support reduction
- run (Clara: remember flags!)
+# run
 ./support_reduction \
---data_dir ../data/ \
---filename bb-bunny \
---n_fixed_bones 5 \
---pso_iters 1 \
---pso_population 1 \
---rotation_angle 50 \
---c_arap 90 \
---c_overhang 20 \
---c_intersect 10000
+    -d ../data/ \
+    -f bb-bunny \
+    -b 5 \
+    -i 1 \
+    -p 1 \
+    -r 50 \
+    -a 90 \
+    -c 20 \
+    -e 1000
 
 # debugging
 lldb support_reduction
-process launch -- --data_dir ../data/ --filename bb-bunny --n_fixed_bones 5 --pso_iters 1 --pso_population 1 --rotation_angle 50
+process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
+
 ```
 
 ### Layout

@@ -51,10 +51,6 @@ set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE CACHE BOOL "Force CGAL to maintain CMAKE
 
 add_definitions(-DMTR_ENABLED)
 
-# Clara 
-
-include_directories(libs/Clara/include)
-
 # source files
 
 include_directories(src)

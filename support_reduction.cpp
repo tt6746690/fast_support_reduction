@@ -1,5 +1,3 @@
-#include "clara.hpp"
-
 #include <Eigen/Core>
 
 #include <igl/readMESH.h>
@@ -28,10 +26,10 @@
 #include <numeric>
 #include <vector>
 #include <cmath>
+#include <unistd.h>
 
 using namespace std;
 using namespace Eigen;
-using namespace clara;
 
 
 const auto rad2deg = [](double radian) {
@@ -68,42 +66,53 @@ int main(int argc, char*argv[])
     c_intersect    = 1;
     rotation_angle = rad2deg(30);
 
-    auto parser
-        = Help(show_help)
-        | Opt(data_dir, "data_dir").optional()
-            ["-d"]["--data_dir"]
-            ("Data Directory containing mesh/bone/weights etc.")
-        | Opt(filename, "filename").optional()
-            ["-f"]["--filename"]
-            ("Filename under data/. `filename{.mesh, .obj, .dmat, .tgf}` required")
-        | Opt(n_fixed_bones, "n_fixed_bones").optional()
-            ["-b"]["--n_fixed_bones"]
-            ("Number of bones to be fixed, from bottom up ")
-        | Opt(pso_iters, "pso_iters").optional()
-            ["-i"]["--pso_iters"]
-            ("Number of particle swarm optimization iterations")
-        | Opt(pso_population, "pso_population").optional()
-            ["-p"]["--pso_population"]
-            ("Size of particle swarm optimization population")
-        | Opt(rotation_angle, "rotation_angle").optional()
-            ["-r"]["--rotation_angle"]
-            ("Maximum rotation (in degrees) of bones allowed")
-        | Opt(c_arap, "c_arap").optional()
-            ["--c_arap"]
-            ("Coefficient for as-rigid-as-possible energy")
-        | Opt(c_overhang, "c_overhang").optional()
-            ["--c_overhang"]
-            ("Coefficient for overhanging energy")
-        | Opt(c_intersect, "c_intersect").optional()
-            ["--c_intersect"]
-            ("Coefficient for self-intersection energy");
-
-
-    auto result = parser.parse(clara::Args(argc, argv));
-    if (!result) { 
-        cerr<<"Error in command line: "<<result.errorMessage()<<'\n'; exit(1); 
+    int c;
+    while ((c = getopt (argc, argv, "d:f:b:i:p:r:a:c:e:")) != -1) {
+        switch (c) {
+            case 'd':
+                data_dir = std::string(optarg);
+                break;
+            case 'f':
+                filename = std::string(optarg);
+                break;
+            case 'b':
+                n_fixed_bones = std::stoi(std::string(optarg));
+                break;
+            case 'i':
+                pso_iters = std::stoi(std::string(optarg));
+                break;
+            case 'p':
+                pso_population = std::stoi(std::string(optarg));
+                break;
+            case 'r':
+                rotation_angle = std::stod(std::string(optarg));
+                break;
+            case 'a':
+                c_arap = std::stod(std::string(optarg));
+                break;
+            case 'c':
+                c_overhang = std::stod(std::string(optarg));
+                break;
+            case 'e':
+                c_intersect = std::stod(std::string(optarg));
+                break;
+            case '?':
+            default:
+                std::cout<<R"(
+                    usage ./support_reduction
+                        -d <data_dir>
+                        -f <filename>
+                        -b <n_fixed_bones>
+                        -i <pso_iters>
+                        -p <pso_population>
+                        -r <rotation_angle>
+                        -a <c_arap>
+                        -c <c_overhang>
+                        -e <c_intersect>
+                )";
+                return 1;
+        }
     }
-    if (show_help) { cout<<parser; exit(0); };
 
     mtr_init("trace.json");
 
