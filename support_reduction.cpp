@@ -13,6 +13,13 @@
 #include <igl/deform_skeleton.h>
 #include <igl/copyleft/cgal/convex_hull.h>
 #include <igl/centroid.h>
+#include <igl/project.h>
+#include <igl/unproject.h>
+#include <igl/snap_points.h>
+#include <igl/unproject_onto_mesh.h>
+#include <igl/directed_edge_parents.h>
+#include <igl/forward_kinematics.h>
+#include <igl/lbs_matrix.h>
 
 #include "reduce_support.h"
 #include "overhang_energy.h"
@@ -27,36 +34,79 @@
 #include <vector>
 #include <cmath>
 #include <unistd.h>
+#include <stack>
 
 using namespace std;
 using namespace Eigen;
+
+
+class State
+{
+public:
+    using RotationList = std::vector<
+        Eigen::Quaterniond, Eigen::aligned_allocator<Eigen::Quaterniond>>;
+public:
+    State(const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE)
+        : C(C), BE(BE) 
+    {
+        igl::directed_edge_parents(BE, P);
+        E = Eigen::MatrixXd::Zero(BE.rows(), 3);
+    }
+
+    inline void compute_T() {
+        RotationList dQ;
+        for (int i = 0; i < BE.rows(); ++i) {
+            dQ.emplace_back(
+                Eigen::AngleAxisf(E(i, 0), Eigen::Vector3f::UnitX()) *
+                Eigen::AngleAxisf(E(i, 1), Eigen::Vector3f::UnitY()) *
+                Eigen::AngleAxisf(E(i, 2), Eigen::Vector3f::UnitZ())
+            );
+        }
+        igl::forward_kinematics(C, BE, P, dQ, T);
+    }
+
+public:
+    // #C by 3      list of joint positions
+    Eigen::MatrixXd C;
+    // #BE by 2     list of bone edge indices
+    Eigen::MatrixXi BE;
+    // #BE          list of parent indices into BE
+    Eigen::VectorXi P;
+
+    // #BE by 3     list of euler angle for each bone
+    Eigen::MatrixXd E;
+    // #BE*(dim+1) by dim   stack of transposed transformation matrices
+    Eigen::MatrixXd T;
+};
+
 
 
 const auto rad2deg = [](double radian) {
     return (radian / 180) * M_PI; 
 };
 
-
 string filename, data_dir;
 bool is3d, show_help;
 int n_fixed_bones, pso_iters, pso_population;
 double c_arap, c_overhang, c_intersect, rotation_angle;
 Eigen::RowVector3d dp;  // printing direction
+Eigen::RowVector3d last_mouse;
 
 MatrixXd V, U, W, C, T;
 MatrixXi Tet, F, BE;
 
-int selected = 0;
+int selected = 0, joint_sel = -1;
 const RowVector3d red(1., 0., 0.);
 const RowVector3d green(0., 1., 0.);
 const RowVector3d blue(0., 1., 0.);
 const RowVector3d sea_green(70./255.,252./255.,167./255.);
+const RowVector3d purple(0.5,0,0.5);
 
 int main(int argc, char*argv[]) 
 {
     show_help      = false;
     data_dir       = "../data/";
-    filename       = "woody";
+    filename       = "bb-bunny";
     n_fixed_bones  = 0;
     pso_iters      = 1;
     pso_population = 1;
@@ -66,7 +116,20 @@ int main(int argc, char*argv[])
     c_intersect    = 1;
     rotation_angle = rad2deg(30);
 
-    int c;
+    string usage = R"(
+        usage ./support_reduction
+            -d <data_dir>           Data Directory containing mesh/bone/weights etc.
+            -f <filename>           Filename under data/. `filename{.mesh, .obj, .dmat, .tgf}`
+            -b <n_fixed_bones>      Number of bones to be fixed, from bottom up 
+            -i <pso_iters>          Number of particle swarm optimization iterations
+            -p <pso_population>     Size of particle swarm optimization population
+            -r <rotation_angle>     Maximum rotation (in degrees) of bones allowed
+            -a <c_arap>             Coefficient for as-rigid-as-possible energy
+            -c <c_overhang>         Coefficient for overhanging energy
+            -e <c_intersect>        Coefficient for self-intersection energy
+    )";
+
+    int c;  
     while ((c = getopt (argc, argv, "d:f:b:i:p:r:a:c:e:")) != -1) {
         switch (c) {
             case 'd':
@@ -98,18 +161,7 @@ int main(int argc, char*argv[])
                 break;
             case '?':
             default:
-                std::cout<<R"(
-                    usage ./support_reduction
-                        -d <data_dir>
-                        -f <filename>
-                        -b <n_fixed_bones>
-                        -i <pso_iters>
-                        -p <pso_population>
-                        -r <rotation_angle>
-                        -a <c_arap>
-                        -c <c_overhang>
-                        -e <c_intersect>
-                )";
+                std::cout<<usage;
                 return 1;
         }
     }
@@ -160,6 +212,31 @@ int main(int argc, char*argv[])
     support_polygon(V, 1, P, G);
     P.rowwise() -= RowVector3d(0, (V.maxCoeff() - V.minCoeff())*0.05, 0);
 
+    Eigen::MatrixXd M;
+    igl::lbs_matrix(V, W, M);
+
+    // Undo Management
+    State s(C, BE);
+    std::stack<State> undo_stack,redo_stack;
+    const auto push_undo = [&]() {
+        undo_stack.push(s);
+        redo_stack = std::stack<State>();
+    };
+    const auto undo = [&]() {
+        if(!undo_stack.empty()) {
+            redo_stack.push(s);
+            s = undo_stack.top();
+            undo_stack.pop();
+        }
+    };
+    const auto redo = [&]() {
+        if(!redo_stack.empty()) {
+            undo_stack.push(s);
+            s = redo_stack.top();
+            redo_stack.pop();
+        }
+    };
+
 
     ReduceSupportConfig<double> config;
     config.is3d = is3d;
@@ -196,11 +273,9 @@ int main(int argc, char*argv[])
         viewer.data().set_mesh(P, G);
         viewer.selected_data_index = viewer.mesh_index(obj_id);
     }
-    const auto draw_ground = [&](igl::opengl::glfw::Viewer &viewer) {
+    const auto draw_ground = [&](igl::opengl::glfw::Viewer& viewer) {
         Vector3d center;
         igl::centroid(U, F, center);
-
-        // shift-down by some `offset` for better visualization
         center(1) = P.col(1).minCoeff();
         
         viewer.selected_data_index = viewer.mesh_index(ground_id);
@@ -245,24 +320,81 @@ int main(int argc, char*argv[])
             viewer.data().add_edges(C.row(BE(i, 0)), C.row(BE(i, 1)), ::sea_green);
         }
     };
+    const auto update = [&]() {
+        s.compute_T();
+        U = M * s.T;
+        viewer.data().set_vertices(U);
+
+        if (joint_sel != -1) {
+            Eigen::MatrixXd Csel(1, 3);
+            Csel.row(0) = C.row(joint_sel);
+            viewer.data().set_points(Csel, ::purple);
+            draw_coordsys(viewer, V);
+            draw_bones(viewer, C, BE);
+            draw_fixed_bones(viewer, C, BE, fixed_bones);
+            viewer.data().add_points(Csel, ::purple);
+        } else {
+            draw_coordsys(viewer, V);
+            draw_bones(viewer, C, BE);
+            draw_fixed_bones(viewer, C, BE, fixed_bones);
+        }
+    };
 
     viewer.data().show_lines = false;
     viewer.data().show_overlay_depth = false;
     viewer.data().line_width = 1000;
     viewer.data().point_size = 15;
-    viewer.callback_key_down = [&](igl::opengl::glfw::Viewer &, unsigned char key, int mod) {
+
+
+    viewer.callback_mouse_down = [&](igl::opengl::glfw::Viewer&, int, int) {
+        last_mouse = Eigen::RowVector3d(
+            viewer.current_mouse_x,viewer.core.viewport(3)-viewer.current_mouse_y,0);  
+        
+        // joint projected to screen space 
+        Eigen::MatrixXd CP; 
+        igl::project(s.C, viewer.core.view, viewer.core.proj, viewer.core.viewport, CP);
+        Eigen::VectorXd D = (CP.rowwise()-last_mouse).rowwise().norm();
+        joint_sel = (D.minCoeff(&joint_sel) < 30)?joint_sel:-1;
+        if (joint_sel != -1) {
+            std::cout<<"joint selected: "<<joint_sel<<'\n';
+            last_mouse(2) = s.C(joint_sel, 2);
+            push_undo();
+            update();
+            return true;
+        }
+        return false;
+    };
+    viewer.callback_key_down = [&](igl::opengl::glfw::Viewer&, unsigned char key, int mod) {
+        std::cout<<"key pressed: " << key <<'\n';
         switch(key) {
-            case '.':
+            case '>': {
                 set_color(viewer);
                 selected++;
                 selected = std::min(std::max(selected,0),(int)W.cols()-1);
                 break;
-            case ',':
+            }
+            case '<': {
                 set_color(viewer);
                 selected--;
                 selected = std::min(std::max(selected,0),(int)W.cols()-1);
                 break;
-            case ' ':
+            }
+            case 'R':
+            case 'r': {
+                push_undo();
+                s.C = C;
+                break;
+            }
+            case 'D':
+            case 'd': {
+                joint_sel = -1;
+                update();
+                break;
+            }
+            case 'G':
+            case 'g': {
+                std::cout<<"Starting optimization\n";
+
                 V = U;
                 reduce_support(V, Tet, F, C, BE, W, config, T, U);
 
@@ -279,24 +411,72 @@ int main(int argc, char*argv[])
                 draw_coordsys(viewer, U);
                 draw_fixed_bones(viewer, CT, BET, fixed_bones);
 
-                igl::writeOBJ(getfilepath(filename+"_deformed_"+std::to_string(pso_iters), "obj"), U, F);
-                break;              
+                break;
+            }
+            case 'S':
+            case 's': {
+                auto outfile = getfilepath(filename+"_deformed_"+std::to_string(pso_iters), "obj");
+                igl::writeOBJ(outfile, U, F);
+                std::cout<<"Saving model to " << outfile << '\n';
+                break;
+            }
+            case 'H':
+            case 'h': {
+                if (joint_sel != -1) {
+                    s.E(joint_sel, 0) += (mod != GLFW_MOD_SHIFT) ?
+                         1./18*M_PI :
+                        -1./18*M_PI;
+                    std::cout<<"euler angle ("<<joint_sel<<", "<<0<<") = "<<s.E(joint_sel, 0)<<'\n';
+                    update();
+                }
+                break;
+            }
+            case 'J':
+            case 'j': {
+                if (joint_sel != -1) {
+                    s.E(joint_sel, 1) += (mod != GLFW_MOD_SHIFT) ?
+                         1./18*M_PI :
+                        -1./18*M_PI;
+                    std::cout<<"euler angle ("<<joint_sel<<", "<<1<<") = "<<s.E(joint_sel, 1)<<'\n';
+                    update();
+                }
+                break;
+            }
+            case 'K':
+            case 'k': {
+                if (joint_sel != -1) {
+                    s.E(joint_sel, 2) += (mod != GLFW_MOD_SHIFT) ?
+                         1./18*M_PI :
+                        -1./18*M_PI;
+                    std::cout<<"euler angle ("<<joint_sel<<", "<<2<<") = "<<s.E(joint_sel, 2)<<'\n';
+                    update();
+                }
+                break;
+            }
         }
         return true;
-    };;
+    };
 
+    update();
     draw_ground(viewer);
     draw_bones(viewer, C, BE);
     draw_coordsys(viewer, U);
     draw_fixed_bones(viewer, C, BE, fixed_bones);
 
-    std::cout<<
-        "Press '.' to show next weight function.\n"<<
-        "Press ',' to show previous weight function.\n"<<
-        "Press [space] to start support reduction.\n";
-    viewer.launch();
-
-
+    std::cout<<R"(
+[click]     Select joint
+D,d         Deselect joint
+R,r         Reset joints
+⌘ Z         Undo
+⌘ ⇧ Z       Redo
+>           Show next weight function.
+<           Show previous weight function.
+G,g         Start Optimization.
+S,s         Save `.obj` file
+H,h/<sh>    Increase/Decrease Euler's angle about x-axis
+J,j/<sh>    Increase/Decrease Euler's angle about y-axis
+K,k/<sh>    Increase/Decrease Euler's angle about z-axis
+)";
     viewer.launch();
     mtr_flush();
     mtr_shutdown();
