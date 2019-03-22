@@ -93,7 +93,8 @@ float reduce_support(
     const Eigen::MatrixXf& W,
     ReduceSupportConfig<float>& config,
     Eigen::MatrixXf& T,
-    Eigen::MatrixXf& U)
+    Eigen::MatrixXf& U,
+    Eigen::MatrixXf& E)
 {
     // Setup
 
@@ -317,6 +318,12 @@ float reduce_support(
     U = M * T;
     overhang_energy_risky(U, F, config.dp, tau, config.unsafe);
 
+    // convert to euler angle in #BE x 3 matrix
+    E.resize(m, 3);
+    for (int j = 0; j < m; ++j) {
+        E.row(j) << X(j*3+0),X(j*3+1),X(j*3+2);
+    }
+
     return fX;
 }
 
@@ -330,17 +337,20 @@ double reduce_support(
     const Eigen::MatrixXd& W,
     ReduceSupportConfig<double>& config,
     Eigen::MatrixXd& T,
-    Eigen::MatrixXd& U)
+    Eigen::MatrixXd& U,
+    Eigen::MatrixXd& E)
 {
     Eigen::MatrixXf Vf = V.cast<float>();
     Eigen::MatrixXf Cf = C.cast<float>();
     Eigen::MatrixXf Wf = W.cast<float>();
     Eigen::MatrixXf Tf = T.cast<float>();
     Eigen::MatrixXf Uf = U.cast<float>();
+    Eigen::MatrixXf Ef = E.cast<float>();
     ReduceSupportConfig<float> configf(config);
-    float fX = reduce_support(Vf, Tet, F, Cf, BE, Wf, configf, Tf, Uf);
+    float fX = reduce_support(Vf, Tet, F, Cf, BE, Wf, configf, Tf, Uf, Ef);
     config = configf;
     T = Tf.cast<double>();
     U = Uf.cast<double>();
+    E = Ef.cast<double>();
     return (double) fX;
 }

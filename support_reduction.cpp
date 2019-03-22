@@ -20,6 +20,7 @@
 #include <igl/directed_edge_parents.h>
 #include <igl/forward_kinematics.h>
 #include <igl/lbs_matrix.h>
+// #include <igl/deform_skeleton.h>
 
 #include "reduce_support.h"
 #include "overhang_energy.h"
@@ -40,6 +41,7 @@ using namespace std;
 using namespace Eigen;
 
 
+
 class State
 {
 public:
@@ -47,12 +49,12 @@ public:
         Eigen::Quaterniond, Eigen::aligned_allocator<Eigen::Quaterniond>>;
 public:
     State(const Eigen::MatrixXd& C, const Eigen::MatrixXi& BE)
-        : C(C), BE(BE) 
     {
-        igl::directed_edge_parents(BE, P);
-        E = Eigen::MatrixXd::Zero(BE.rows(), 3);
+        reset(C, BE);
     }
 
+    // given joint relative rotations, 
+    //      construct per-bone transformation matrices `T` 
     inline void compute_T() {
         RotationList dQ;
         for (int i = 0; i < BE.rows(); ++i) {
@@ -65,8 +67,46 @@ public:
         igl::forward_kinematics(C, BE, P, dQ, T);
     }
 
+    // Deform skeleton, where local translation is not allowed
+    inline void deform_skeleton(
+        Eigen::MatrixXd& CT,
+        Eigen::MatrixXi& BET) 
+    {
+        CT.resize(C.rows(),C.cols());
+        BET.resize(BE.rows(),2);
+        BET = BE;
+        for(int e = 0;e<BE.rows();e++)
+        {
+            Matrix4d t;
+            t << T.block(e*4,0,4,3).transpose(), 0,0,0,0;
+            Affine3d a;
+            a.matrix() = t;
+            Vector3d c0 = C.row(BE(e,0));
+            Vector3d c1 = C.row(BE(e,1));
+            CT.row(BE(e,0)) = a * c0;
+            CT.row(BE(e,1)) = a * c1;
+        }
+    }
+
+    inline void reset(
+        const Eigen::MatrixXd& C_,
+        const Eigen::MatrixXi& BE_) 
+    {
+        C = C_; BE = BE_;
+        T.resize(BE.rows()*4,3);
+        for (int i = 0; i < BE.rows(); ++i) {
+            T.block(i*3, 0, 4, 3) << 1,0,0,
+                                     0,1,0,
+                                     0,0,1,
+                                     0,0,0;
+        }
+        E = Eigen::MatrixXd::Zero(BE.rows(), 3);
+        igl::directed_edge_parents(BE, P);
+    }
+
 public:
     // #C by 3      list of joint positions
+    //              Fixed for a given mesh.
     Eigen::MatrixXd C;
     // #BE by 2     list of bone edge indices
     Eigen::MatrixXi BE;
@@ -81,8 +121,12 @@ public:
 
 
 
+const auto deg2rad = [](double degree) {
+    return (degree / 180) * M_PI; 
+};
+
 const auto rad2deg = [](double radian) {
-    return (radian / 180) * M_PI; 
+    return radian * 180 / M_PI;
 };
 
 string filename, data_dir;
@@ -114,7 +158,7 @@ int main(int argc, char*argv[])
     c_arap         = 1;
     c_overhang     = 1;
     c_intersect    = 1;
-    rotation_angle = rad2deg(30);
+    rotation_angle = 30;    // degree
 
     string usage = R"(
         usage ./support_reduction
@@ -215,6 +259,7 @@ int main(int argc, char*argv[])
     Eigen::MatrixXd M;
     igl::lbs_matrix(V, W, M);
 
+
     // Undo Management
     State s(C, BE);
     std::stack<State> undo_stack,redo_stack;
@@ -242,7 +287,7 @@ int main(int argc, char*argv[])
     config.is3d = is3d;
     config.alpha_max = 0.25 * M_PI;
     config.dp = dp;
-    config.rotation_angle = rotation_angle * M_PI / 180;
+    config.rotation_angle = deg2rad(rotation_angle);
     config.fixed_bones = fixed_bones;
     config.pso_iters = pso_iters;
     config.pso_population = pso_population;
@@ -250,6 +295,8 @@ int main(int argc, char*argv[])
     config.c_overhang = c_overhang;
     config.c_intersect = c_intersect;
     config.display = true;
+
+    std::cout<<"rotation_angle = "<<config.rotation_angle<<'\n';
 
 
     //////////////////////////////////////////////////////////////////////
@@ -320,24 +367,30 @@ int main(int argc, char*argv[])
             viewer.data().add_edges(C.row(BE(i, 0)), C.row(BE(i, 1)), ::sea_green);
         }
     };
-    const auto update = [&]() {
-        s.compute_T();
+    const auto update = [&](const Eigen::MatrixXd& T) {
+        s.T = T;
         U = M * s.T;
-        viewer.data().set_vertices(U);
+        viewer.data().clear();
+        viewer.data().set_mesh(U, F);
+
+        Eigen::MatrixXd CT;
+        Eigen::MatrixXi BET;
+        s.deform_skeleton(CT, BET);
 
         if (joint_sel != -1) {
             Eigen::MatrixXd Csel(1, 3);
-            Csel.row(0) = C.row(joint_sel);
+            Csel.row(0) = CT.row(joint_sel);
             viewer.data().set_points(Csel, ::purple);
-            draw_coordsys(viewer, V);
-            draw_bones(viewer, C, BE);
-            draw_fixed_bones(viewer, C, BE, fixed_bones);
+            draw_coordsys(viewer, U);
+            draw_bones(viewer, CT, BET);
+            draw_fixed_bones(viewer, CT, BET, fixed_bones);
             viewer.data().add_points(Csel, ::purple);
         } else {
-            draw_coordsys(viewer, V);
-            draw_bones(viewer, C, BE);
-            draw_fixed_bones(viewer, C, BE, fixed_bones);
+            draw_coordsys(viewer, U);
+            draw_bones(viewer, CT, BET);
+            draw_fixed_bones(viewer, CT, BET, fixed_bones);
         }
+        draw_ground(viewer);
     };
 
     viewer.data().show_lines = false;
@@ -350,16 +403,21 @@ int main(int argc, char*argv[])
         last_mouse = Eigen::RowVector3d(
             viewer.current_mouse_x,viewer.core.viewport(3)-viewer.current_mouse_y,0);  
         
+        Eigen::MatrixXd CT;
+        Eigen::MatrixXi BET;
+        s.deform_skeleton(CT, BET);
+
         // joint projected to screen space 
-        Eigen::MatrixXd CP; 
-        igl::project(s.C, viewer.core.view, viewer.core.proj, viewer.core.viewport, CP);
+        Eigen::MatrixXd CP;
+        igl::project(CT, viewer.core.view, viewer.core.proj, viewer.core.viewport, CP);
         Eigen::VectorXd D = (CP.rowwise()-last_mouse).rowwise().norm();
         joint_sel = (D.minCoeff(&joint_sel) < 30)?joint_sel:-1;
         if (joint_sel != -1) {
             std::cout<<"joint selected: "<<joint_sel<<'\n';
-            last_mouse(2) = s.C(joint_sel, 2);
+            last_mouse(2) = CT(joint_sel, 2);
             push_undo();
-            update();
+            s.compute_T();
+            update(s.T);
             return true;
         }
         return false;
@@ -382,35 +440,38 @@ int main(int argc, char*argv[])
             case 'R':
             case 'r': {
                 push_undo();
-                s.C = C;
+                s.reset(C, BE);
+                s.compute_T();
+                update(s.T);
                 break;
             }
             case 'D':
             case 'd': {
                 joint_sel = -1;
-                update();
+                s.compute_T();
+                update(s.T);
                 break;
             }
             case 'G':
             case 'g': {
                 std::cout<<"Starting optimization\n";
+                Eigen::MatrixXd C_, V_;
+                Eigen::MatrixXi BE_;
+                s.compute_T();
+                V_ = M * s.T;
+                s.deform_skeleton(C_,BE_);
 
-                V = U;
-                reduce_support(V, Tet, F, C, BE, W, config, T, U);
+                Eigen::MatrixXd E;
+                reduce_support(V_, Tet, F, C_, BE_, W, config, T, U, E);
 
-                // reset mesh 
-                viewer.data().clear();
-                viewer.data().set_mesh(U, F);
+                for (int i = 0; i < E.rows(); ++i) {
+                    s.E.row(i) += E.row(i);
+                }
+                s.compute_T();
 
-                Eigen::MatrixXd CT;
-                Eigen::MatrixXi BET;
-                igl::deform_skeleton(C, BE, T, CT, BET);
-
-                draw_ground(viewer);
-                draw_bones(viewer, CT, BET);
-                draw_coordsys(viewer, U);
-                draw_fixed_bones(viewer, CT, BET, fixed_bones);
-
+                update(s.T);
+                push_undo();
+                s.reset(C, BE);
                 break;
             }
             case 'S':
@@ -427,7 +488,8 @@ int main(int argc, char*argv[])
                          1./18*M_PI :
                         -1./18*M_PI;
                     std::cout<<"euler angle ("<<joint_sel<<", "<<0<<") = "<<s.E(joint_sel, 0)<<'\n';
-                    update();
+                    s.compute_T();
+                    update(s.T);
                 }
                 break;
             }
@@ -438,7 +500,8 @@ int main(int argc, char*argv[])
                          1./18*M_PI :
                         -1./18*M_PI;
                     std::cout<<"euler angle ("<<joint_sel<<", "<<1<<") = "<<s.E(joint_sel, 1)<<'\n';
-                    update();
+                    s.compute_T();
+                    update(s.T);
                 }
                 break;
             }
@@ -449,7 +512,8 @@ int main(int argc, char*argv[])
                          1./18*M_PI :
                         -1./18*M_PI;
                     std::cout<<"euler angle ("<<joint_sel<<", "<<2<<") = "<<s.E(joint_sel, 2)<<'\n';
-                    update();
+                    s.compute_T();
+                    update(s.T);
                 }
                 break;
             }
@@ -457,7 +521,8 @@ int main(int argc, char*argv[])
         return true;
     };
 
-    update();
+    s.compute_T();
+    update(s.T);
     draw_ground(viewer);
     draw_bones(viewer, C, BE);
     draw_coordsys(viewer, U);
