@@ -1,3 +1,6 @@
 [submodule "libigl"]
 	path = libs/libigl
 	url = git@github.com:libigl/libigl.git
+[submodule "libs/GAUSS"]
+	path = libs/GAUSS
+	url = https://github.com/ErisZhang/GAUSS.git
