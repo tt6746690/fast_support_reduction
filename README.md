@@ -32,7 +32,7 @@ output file: ../data/dinosaur.mesh ../data/dinosaur.dmat
     -b 5 \
     -i 1 \
     -p 1 \
-    -r 50 \
+    -r 10 \
     -a 90 \
     -c 20 \
     -e 1000
