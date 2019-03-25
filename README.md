@@ -132,3 +132,21 @@ process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
     + understand physics of stress field
         + ask sarah on physics based stuff.
     + rendering based speed up
+
+
+### meeting 
+
+March 22
+
++ faster stress computation 
+    + GPU accelerated Jacobi solver
+    + voxel representation of mesh 
+        + no matrix assembly since its on a grid
+        + solving linear system `Ax=b` with iterative solver on CPU first then GPU 
+            + shader (cross platform) vs. cuda
+    + reference 2d jacobi solver for poisson equation ... on CPU/GPU
++ ui
+    + find closest quaternion to match screen space drag, or
+    + github repo given ImGuizmo
++ engineering
+    + cmake release/debug mode 
