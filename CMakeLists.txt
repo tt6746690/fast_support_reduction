@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 option(WITH_VISUALIZE   "Geneate bin for visualization"      OFF)
-option(WITH_DEBUG       "Enable debugging"                   ON)
+option(WITH_DEBUG       "Enable debugging"                   OFF)
 
 if(WITH_DEBUG)
     add_compile_options(-O0)
@@ -27,7 +27,7 @@ endif()
 # SET(OpenMP_CXX_FLAGS     "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
 # SET(OpenMP_CXX_LIB_NAMES "omp")
 # SET(OpenMP_omp_LIBRARY   "/usr/local/opt/libomp/lib/libomp.dylib")
-find_package(OpenMP REQUIRED)
+# find_package(OpenMP REQUIRED)
 
 
 # libigl
