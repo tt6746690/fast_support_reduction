@@ -81,27 +81,27 @@ process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
 
 #### TODO
 
-+ euler angle
-+ optimized forward kinematics
-+ depth counter algorithm for self intersection volume computation
+
++ low priority
+    + optimized forward kinematics in shaders 
+    + depth counter algorithm for self intersection volume computation
 
 
 
-#### Readings
 
+## meeting 
+
+#### before March 22
 
 + coefficient
     + tune to be fixed 
     + account for volume / surface
     + one way to test things work: scale mesh by 100x and see result is invariant
-
 + support generation
     + meshmixer generates support 
     + varied for different software / other scenario
-
 + the cool part 
     + joint based character deformation 
-
 + how to push forward to a publication 
     + make things fast
     + dont worry about support reduction 
@@ -134,9 +134,7 @@ process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
     + rendering based speed up
 
 
-### meeting 
-
-March 22
+#### March 22
 
 + faster stress computation 
     + GPU accelerated Jacobi solver
@@ -150,3 +148,60 @@ March 22
     + github repo given ImGuizmo
 + engineering
     + cmake release/debug mode 
+
+
+#### May 23 
+
+
++ what have we done so far
+    + goal
+        + a design tool to allow artistics to deform figures by their skeleton
+        + be able to visualize yield stress on surface as they make edit
+        + explore deformations with good properties with global optimization
+    + global optimization
+        + reduced space (skeleton) enabling possibility of global optimization 
+        + objective function capturing requirements:
+            + minimize supporting material used
+            + able to stand (center of mass inside support polygon)
+            + will not break (yield criterion > material-specific yield stress)
+            + local distortion (arap energy)
+    + stress visualization (need real time)
+        + explored
+            + iterative methods like jacobi, SOR (can control number of iterations)
+            + hexahedron element over axis-aligned grids (element stiffness K constant)
+        + later
+            + multigrid on cuda
+
+
++ questions
+    + continuous optimization (whether or not use gradient ...)
+        + consider arap energy direction ?
+        + `min_\Omega ( \min_u \int_\Omega E(u,X) dx))`
+            + `\Omega` is the domain
+        + https://nmwsharp.com/media/cea_tutorial.pdf
+        + hard constraints (make it stand)
+            + global optimization use hard constaints
+            + then use gradient for different initial points.
+        + do not penalize small values of stress 
+            + can design functions that is continuous 
+                + (0 infeasible, grows very quickly for feasible)
+        + need to consider the feasible set ... (should be good)
+        + todo
+            + do continous optimization on arap+fracture energy 
+            + how do you derive gradients
+                + derivation of gradient of fracture `u` with respect to `X`
+                    + https://nmwsharp.com/media/cea_tutorial.pdf
+            + do 2d shape optimization
+                + on simple coarse domain, the rod that sticks out of wall
+                + expect points close to wall expand
+        + hybrid global optimization methods
+            + design gallery: probably better to use global methods
+        + what is the thing we want to compute gradient of ?
+            + in the want to compute gradient with respect to euler angle
+            + `X(\theta)` where `X` is the surface
+    + is it a good idea to go with multigrid ? 
+        + pro: O(n) complexity
+    + can we do weekly meetings ?
+    + interpolation problem is fixed
+        + do a screenshot to show it's done
+    + 
