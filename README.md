@@ -204,4 +204,7 @@ process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
     + can we do weekly meetings ?
     + interpolation problem is fixed
         + do a screenshot to show it's done
-    + 
+
++ thoughts
+    + at first identify your problem rather than jumping into the problem i.e. what the problem it is
+    + look into the closest work, try to understand their work and make comparisons
