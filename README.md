@@ -172,6 +172,24 @@ process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
         + later
             + multigrid on cuda
 
+#### June 4
++ forget about the continuous derivative for shape gradient
+    + _variational surface cutting_ has a different formulation from our problem
++ discrete setting for solving the PDE-contrained optimization problem
+    + convert the constraints into _K(d)u=f(d)_ using FEM, where d is the design parameter (in our case the vertex positions)
+    + take derivative of K and f with respect to d
+    + look into _automatic differentiation_
++ refer to Bernhard Thomaszewski's papers to get a better sense regarding how the method works
++ the ultimate goal doesn't change
+    + object function: min E_{ARAP}(X_{input mesh},X(T))+E_{stress}(X_{input mesh},X(T))
++ next step
+    + start with a simple 2D cantilever example
+        + linear FEM stiff material
+        + nonlinear FEM soft material
+        + treat X as a function of T (apply LBS)
+
+
+
 
 + questions
     + continuous optimization (whether or not use gradient ...)
