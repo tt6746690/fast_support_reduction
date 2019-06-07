@@ -193,3 +193,6 @@
         + generalization 
             + mesh: solid angle computed via inverse tangent function
 
+#### USEFUL
++ adjoint method for pde-constrained optimization
+    + https://scicomp.stackexchange.com/questions/14259/understanding-the-cost-of-adjoint-method-for-pde-constrained-optimization

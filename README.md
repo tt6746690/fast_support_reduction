@@ -173,7 +173,7 @@ process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
             + multigrid on cuda
 
 #### June 4
-+ forget about the continuous derivative for shape gradient
++ forget about the continuous derivation for shape gradient
     + _variational surface cutting_ has a different formulation from our problem
 + discrete setting for solving the PDE-contrained optimization problem
     + convert the constraints into _K(d)u=f(d)_ using FEM, where d is the design parameter (in our case the vertex positions)
@@ -188,6 +188,14 @@ process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
         + nonlinear FEM soft material
         + treat X as a function of T (apply LBS)
 
+#### June 6
++ the deformed volumetric mesh might be of bad quality due to LBS
+    + not suitable to do FEM based on this
+    + need to confirm in both 2D and 3D
++ use auto diff to compute the partial derivative of K with respect to T
++ in each frame voxelize the deformed tet mesh
++ do trilinear interpolation over the bbw weights field for each grid point
+    + to get the variable back to T
 
 
 
