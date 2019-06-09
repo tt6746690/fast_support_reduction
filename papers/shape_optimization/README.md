@@ -14,6 +14,13 @@
 
 + [2016_direct_shape_optimization_for_strengthening_3d_printable_objects](2016_direct_shape_optimization_for_strengthening_3d_printable_objects.pdf)
     + shape optimization for structural design
+    + Related Work: shape optimization in graphics
+        + improving the balance [Make It Stand: Balancing shapes for 3D fabrication]
+        + spinnability [Spin-it: Optimizing moment of inertia for spinnable ob- jects]
+        + inverse elastic shape design [An asymptotic numerical method for inverse elastic shape design]
+        + support material reduction [Support Slimming for Single Material Based Additive Manufacturing]
+        + displacements with offset surfaces [Reduced-Order Shape Optimization Using Offset Surfaces]
+
 
 + [2018_variational_surface_cutting](2018_variational_surface_cutting.pdf)
     + shape optimization on surfaces
