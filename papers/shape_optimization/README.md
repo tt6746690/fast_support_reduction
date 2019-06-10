@@ -24,3 +24,6 @@
 
 + [2018_variational_surface_cutting](2018_variational_surface_cutting.pdf)
     + shape optimization on surfaces
+
+
++ Discrete Adjoint Method (v.s. Continuous Adjoint Method)
