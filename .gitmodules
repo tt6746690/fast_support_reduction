@@ -1,3 +1,6 @@
 [submodule "libigl"]
 	path = libs/libigl
 	url = git@github.com:libigl/libigl.git
+[submodule "libs/math"]
+	path = libs/math
+	url = https://github.com/stan-dev/math.git
