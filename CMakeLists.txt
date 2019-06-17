@@ -51,8 +51,11 @@ set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE CACHE BOOL "Force CGAL to maintain CMAKE
 
 add_definitions(-DMTR_ENABLED)
 
-# source files
+# stan
+include_directories(libs/math) # header-only
+include_directories(libs/math/lib/eigen_3.3.3) # not sure why this works...
 
+# source files
 include_directories(src)
 include_directories(src/opengl)
 include_directories(src/utils)
@@ -73,11 +76,14 @@ file(GLOB SRCFILES
 
 # executables
 
-add_executable(support_reduction support_reduction.cpp ${SRCFILES})
-target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png igl::tetgen)
+add_executable(shape_opt shape_opt.cpp ${SRCFILES})
+target_link_libraries(shape_opt igl::core igl::opengl_glfw igl::png igl::tetgen)
 
-add_executable(2d_bbw 2d_bbw.cpp ${SRCFILES})
-target_link_libraries(2d_bbw igl::core igl::opengl_glfw igl::png igl::tetgen)
+# add_executable(support_reduction support_reduction.cpp ${SRCFILES})
+# target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png igl::tetgen)
+
+# add_executable(2d_bbw 2d_bbw.cpp ${SRCFILES})
+# target_link_libraries(2d_bbw igl::core igl::opengl_glfw igl::png igl::tetgen)
 
 # add_executable(gl gl.cpp ${SRCFILES})
 # target_link_libraries(gl igl::core igl::opengl_glfw igl::png igl::tetgen)
