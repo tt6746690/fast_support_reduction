@@ -27,3 +27,10 @@
 
 
 + Discrete Adjoint Method (v.s. Continuous Adjoint Method)
+
++ Direct Collocation Method
+    + https://mec560sbu.github.io/2016/09/30/direct_collocation/
+    + IPOPT
+
++ Thingi10k: A Dataset of 10000 3d-printing models
+    + https://ten-thousand-models.appspot.com/
