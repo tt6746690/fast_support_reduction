@@ -54,6 +54,12 @@ add_definitions(-DMTR_ENABLED)
 # stan
 include_directories(libs/math) # header-only
 include_directories(libs/math/lib/eigen_3.3.3) # not sure why this works...
+include_directories(libs/math/lib/boost_1.69.0)
+include_directories(libs/math/lib/sundials_4.1.0)
+include_directories(libs/math/lib/cpplint_4.45)
+include_directories(libs/math/lib/gtest_1.8.1)
+include_directories(libs/math/lib/opencl_1.2.8)
+
 
 # source files
 include_directories(src)

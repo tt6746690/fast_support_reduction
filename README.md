@@ -198,6 +198,16 @@ process launch -- -d ../data/ -f bb-bunny -b 5 -i 1 -p 1 -r 50 -a 90 -c 20
     + to get the variable back to T
 
 
+#### June 20
++ instead of doing voxelization, use fixed grid
+    + look at ChainQueen: A Real-Time Differentiable Physical Simulator for Soft Robotics
+    + the approach that is used here (tet <-> hex) is similar to what is commonly used in CFD
+    + ask Michael Tao for details
++ dK(p)/dp * u has equivalent result as d(K(p)*u)/dp
+    + u is simply a few numbers u = Kf
+    + the difference is the complexity -> the sparsity of K
++ stan is good
+
 + questions
     + continuous optimization (whether or not use gradient ...)
         + consider arap energy direction ?

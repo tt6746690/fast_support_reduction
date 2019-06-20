@@ -34,3 +34,8 @@
 
 + Thingi10k: A Dataset of 10000 3d-printing models
     + https://ten-thousand-models.appspot.com/
+
++ Autodiff
+    + autodiff can differentiate algorithm, not just expression
+    + implement your own AD in one day 
+        + http://blog.rogerluo.me/2018/10/23/write-an-ad-in-one-day/
