@@ -3,167 +3,159 @@
 #include <Eigen/Core>
 #include <boost/math/tools/promotion.hpp>
 
+#include <igl/opengl/glfw/Viewer.h>
+#include <igl/readOBJ.h>
+
 using namespace Eigen;
 using namespace std;
 
-template <typename T1, typename T2, typename T3>
-inline
-typename boost::math::tools::promote_args<T1, T2, T3>::type
-normal_log(const T1& y, const T2& mu, const T3& sigma) {
-    using std::pow; using std::log;
-    return -0.5 * pow((y - mu) / sigma, 2.0)
-           -log(sigma)
-           -0.5 * log(2 * stan::math::pi());
-}
 
-
-int increment(int x) {
-    return x+1;
-}
-
-
-class Func {
-    public:
-        void operator() (const string& str) const {
-            cout << str << endl;
-        }
+inline string getfilepath(const string& name, const string& ext) { 
+    return "../data/" + name + "." + ext; 
 };
 
 
-class StringAppend {
-    public:
-        explicit StringAppend(const string& str) : ss(str) {}
-        void operator() (const string& str) const {
-            cout << str << " " << ss << endl;
-        }
+MatrixXd V, V_2;
+MatrixXi F;
 
-    private:
-        const string ss;
-};
-
-class ShorterThan {
-    public:
-        explicit ShorterThan(int maxLength) : length(maxLength) {}
-
-        bool operator() (const string& str) const {
-            return str.length() < length;
-        }
-    private:
-        const int length;
-
-};
-
-
-struct normal_ll {
-    const Matrix<double, Dynamic, 1>  y_;
-
-    normal_ll(const Matrix<double, Dynamic, 1>& y) : y_(y) {}
-
-    template <typename T>
-    T operator() (const Matrix<T, Dynamic, 1>& theta) const {
-        T mu = theta[0];
-        T sigma = theta[1];
-        T lp = 0;
-        for (int n = 0; n < y_.size(); ++n) {
-            lp += normal_log(y_[n], mu, sigma);
-        }
-        return lp;
-    }
-};
-
-
+const double young = 5e5; // Young's modulus
+const double mu = 0.45; // possion ratio
+const double g = -9.8;
 
 int main(int argc, char *argv[])
 {
 
-    // Matrix<double, Dynamic, 1> M(2);
-    // M << 1.,
-    //      2.;
+    igl::opengl::glfw::Viewer viewer;
+    string filename = "cantilever";
+    igl::readOBJ(getfilepath(filename, "obj"), V, F);
 
-    // std::cout << M.size() << std::endl;
+    const int dim = 2;
+    const int num_V = V.rows();
 
+    V_2.resize(num_V, dim);
+    V_2 << V.col(0), V.col(1);
 
-    // std::cout << "log normal(1 | 2, 3)="
-    //         << stan::math::normal_log(1, 2, 3)
-    //         << std::endl;
+    // dirichlet boundary condition
+    vector<int> fixedVertices;
+    double tolerance = (V.col(0).maxCoeff() - V.col(0).minCoeff()) * 0.005;
+    double min_Y = V.col(0).minCoeff();
+    for (int i = 0; i < V.rows(); i++) {
+        if (abs(V(i, 0) - min_Y) < tolerance) {
+            fixedVertices.push_back(i);
+        }
+    }
 
-
-    // using std::pow;
-    // double y = 1.3;
-    // stan::math::var mu = 0.5, sigma = 1.2;
-
-    // stan::math::var lp = 0;
-    // lp -= 0.5 * log(2 * stan::math::pi());
-    // lp -= log(sigma);
-    // lp -= 0.5 * pow((y - mu) / sigma, 2);
-    // std::cout << "f(mu, sigma) = " << lp.val() << std::endl;
-
-    // // // way 1
-    // // lp.grad();
-    // // std::cout << " d.f / d.u = " << mu.adj()
-    // //           << " d.f / d.sigma = " << sigma.adj() << std::endl;
-
-    // // way 2
-    // std::vector<stan::math::var> theta;
-    // theta.push_back(mu);
-    // theta.push_back(sigma);
-    // std::vector<double> g;
-    // lp.grad(theta, g);
-    // std::cout << " d.f / d.mu = " << g[0]
-    //           << " d.f / d.sigma = " << g[1] << std::endl;
-
-
-    // double y = 1.3;
-    // stan::math::var mu = 0.5, sigma = 1.2;
-
-    // stan::math::var lp = normal_log(y, mu, sigma);
-
-    // int x = 5;
-    // int y = increment(x);
-    // std::cout << y << std::endl;
-
-    // Func myFunc;
-    // myFunc("Hello World!");
-
-
-    // A(0, 0) = x;
-
-    // for (int i = 0; i < 100; i++) {
-    //     y = sin(x+y);
+    // for (auto i = fixedVertices.begin(); i != fixedVertices.end(); ++i) {
+    //     cout << *i << endl;
     // }
 
-    // std::cout << "value = " << y.val() << std::endl;
 
-    // y.grad();
-    // std::cout << " d.f / d.x = " << x.adj()
-    //           << " d.f / d.y = " << y.adj() << std::endl;
+    // prepare K and f
+    SparseMatrix<stan::math::var> K;
+    K.resize(dim*num_V, dim*num_V);
+    Matrix<stan::math::var, Dynamic, 1> f(dim*num_V);
+    f.setZero();
 
-    // stan::math::var x = 0.5, y = 0.5;
-
-    // Matrix<stan::math::var, 3, 1> A;
-    // A(0, 0) = x;
-    // A(0, 1) = 5.0;
-
-    // Matrix<double, Dynamic, Dynamic> A(4, 4);
-    // A.resize(5, 5);
-    // Matrix<float,3*4,3> M_4(3*4, 3);
-    // Matrix<double, Dynamic, 1> B(3);
-
-    stan::math::var x = 0.5, y = 0.5;
-    Matrix<stan::math::var, 3, 1> A;
-    A(0, 0) = x;
-    A(1, 0) = 5.0;
-    A(2, 0) = x*x+y;
-
-    std::cout << A << std::endl;
-
-    A(2).grad();
-    std::cout << x.adj() << std::endl;
+    // construct the elasticity matrix D
+    MatrixXd D(3, 3);
+    D << 1, mu, 0,
+        mu,  1, 0,
+         0,  0, 0.5*(1-mu);
+    D *= young/(1-mu*mu);
 
     vector<Triplet<stan::math::var>> triplets;
+    triplets.reserve(F.rows()*3*3*2*2);
+
+    Matrix<stan::math::var, 3, 3> C;
+    Matrix<stan::math::var, 3, 3> IC;
+    Matrix<stan::math::var, 3, 6> B;
+    B.setZero();
+    Matrix<stan::math::var, 6, 6> Ke;
+    stan::math::var tri_area;
+
+    Matrix<stan::math::var, Dynamic, Dynamic> Bs(3*F.rows(),6);
 
 
+    for (int i = 0; i < 2; i++) {
+        auto ele_i = F.row(i);
+
+        auto v0 = V_2.row(ele_i(0));
+        auto v1 = V_2.row(ele_i(1));
+        auto v2 = V_2.row(ele_i(2));
+
+        C << 1, v0,
+             1, v1,
+             1, v2;
+
+        IC = C.inverse();
+        tri_area = C.determinant()/2;
+
+        assert(tri_area != 0);
+
+        for (int j = 0; j < 3; j++) {
+            B(0, 2*j+0) = IC(1, i);
+            B(0, 2*j+1) = 0;
+            B(1, 2*j+0) = 0;
+            B(1, 2*j+1) = IC(2, i);
+            B(2, 2*j+0) = IC(2, i);
+            B(2, 2*j+1) = IC(1, i);
+        }
+
+        Ke = B.transpose().eval()*D*B*tri_area;
+
+        cout << Ke << endl;
+
+        // assemble f
+        for (int j = 0; j < 3; j++) {
+            f(2*ele_i(j)+1, 0) += g*tri_area/3;
+        }
+
+        // assemble K
+        for (int m = 0; m < 3; m++) {
+            for (int n = 0; n < 3; n++) {
+                Triplet trplt11(2*ele_i(m)+0, 2*ele_i(n)+0, Ke(2*m+0, 2*n+0));
+                Triplet trplt12(2*ele_i(m)+0, 2*ele_i(n)+1, Ke(2*m+0, 2*n+1));
+                Triplet trplt21(2*ele_i(m)+1, 2*ele_i(n)+0, Ke(2*m+1, 2*n+0));
+                Triplet trplt22(2*ele_i(m)+1, 2*ele_i(n)+1, Ke(2*m+1, 2*n+1));
+
+                triplets.push_back(trplt11);
+                triplets.push_back(trplt12);
+                triplets.push_back(trplt21);
+                triplets.push_back(trplt22);
+            }
+        }
+
+        Bs.block(3*i, 0, 3, 6) = B; // save B
+        
+    }
+
+    K.setFromTriplets(triplets.begin(), triplets.end());
+
+    cout << K.nonZeros() << endl;
+
+    // apply constraints
+    for (int i = 0; i < fixedVertices.size(); i++) {
+        int idx = fixedVertices[i];
+        K.prune([&idx](int m, int n, stan::math::var) { 
+            return m!=2*idx && n!=2*idx && m!=2*idx+1 && n!=2*idx+1; });
+        K.coeffRef(2*idx, 2*idx) = 1;
+        K.coeffRef(2*idx+1, 2*idx+1) = 1;
+        f(2*idx) = 0;
+        f(2*idx+1) = 0;
+    }
+
+    cout << "reach here" << endl;
+
+    // solve for displacements at each vertex Kd = f
+	SimplicialLDLT<SparseMatrix<stan::math::var>> solver(K);
+	// Matrix<stan::math::var, Dynamic, Dynamic> u;
+    auto u = solver.solve(f); // displacements
+
+    // cout << u << endl;
+
+
+    viewer.data().set_mesh(V, F);
+    viewer.launch();
 
     return 0;
-
 }
