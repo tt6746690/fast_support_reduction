@@ -208,13 +208,28 @@ int main(int argc, char *argv[])
     // cout << A.row(1) << endl;
 
     Matrix<double, 2, 2> A;
+    Matrix<stan::math::var, 2, 2> B;
 
-    for (int i = 0; i < 2; i++) {
-        A << 1, 1,
-             1, i;
+    A << 1, 2,
+         1, 2;
 
-        cout << A << endl;
-    }
+    B << 3, 4,
+         3, 4;
+    
+    B = B + A;
+
+    cout << A << endl;
+    cout << B << endl;
+
+    // for (int i = 0; i < 2; i++) {
+    //     A << 1, 1,
+    //          1, i;
+
+    //     cout << A << endl;
+    // }
+
+
+
 
 
     return 0;

@@ -18,7 +18,7 @@ inline string getfilepath(const string& name, const string& ext) {
 MatrixXd V, V_2;
 MatrixXi F;
 
-const double young = 5e5; // Young's modulus
+const double young = 1.45e5; // Young's modulus
 const double mu = 0.45; // possion ratio
 const double g = -9.8;
 
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 {
 
     igl::opengl::glfw::Viewer viewer;
-    string filename = "cantilever";
+    string filename = "cantilever_new";
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
 
     const int dim = 2;
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     double tolerance = (V.col(0).maxCoeff() - V.col(0).minCoeff()) * 0.005;
     double min_Y = V.col(0).minCoeff();
     for (int i = 0; i < V.rows(); i++) {
-        if (abs(V(i, 0) - min_Y) < tolerance) {
+        if (abs(V(i, 0)-min_Y) < tolerance) {
             fixedVertices.push_back(i);
         }
     }
@@ -48,7 +48,6 @@ int main(int argc, char *argv[])
     // for (auto i = fixedVertices.begin(); i != fixedVertices.end(); ++i) {
     //     cout << *i << endl;
     // }
-
 
     // prepare K and f
     SparseMatrix<stan::math::var> K;
@@ -75,10 +74,9 @@ int main(int argc, char *argv[])
 
     Matrix<stan::math::var, Dynamic, Dynamic> Bs(3*F.rows(),6);
 
+    for (int i = 0; i < F.rows(); i++) {
 
-    for (int i = 0; i < 2; i++) {
         auto ele_i = F.row(i);
-
         auto v0 = V_2.row(ele_i(0));
         auto v1 = V_2.row(ele_i(1));
         auto v2 = V_2.row(ele_i(2));
@@ -93,17 +91,15 @@ int main(int argc, char *argv[])
         assert(tri_area != 0);
 
         for (int j = 0; j < 3; j++) {
-            B(0, 2*j+0) = IC(1, i);
+            B(0, 2*j+0) = IC(1, j);
             B(0, 2*j+1) = 0;
             B(1, 2*j+0) = 0;
-            B(1, 2*j+1) = IC(2, i);
-            B(2, 2*j+0) = IC(2, i);
-            B(2, 2*j+1) = IC(1, i);
+            B(1, 2*j+1) = IC(2, j);
+            B(2, 2*j+0) = IC(2, j);
+            B(2, 2*j+1) = IC(1, j);
         }
 
         Ke = B.transpose().eval()*D*B*tri_area;
-
-        cout << Ke << endl;
 
         // assemble f
         for (int j = 0; j < 3; j++) {
@@ -131,8 +127,6 @@ int main(int argc, char *argv[])
 
     K.setFromTriplets(triplets.begin(), triplets.end());
 
-    cout << K.nonZeros() << endl;
-
     // apply constraints
     for (int i = 0; i < fixedVertices.size(); i++) {
         int idx = fixedVertices[i];
@@ -144,18 +138,23 @@ int main(int argc, char *argv[])
         f(2*idx+1) = 0;
     }
 
-    cout << "reach here" << endl;
-
     // solve for displacements at each vertex Kd = f
 	SimplicialLDLT<SparseMatrix<stan::math::var>> solver(K);
-	// Matrix<stan::math::var, Dynamic, Dynamic> u;
     auto u = solver.solve(f); // displacements
 
-    // cout << u << endl;
-
+    cout << u.bottomRows(10) << endl;
 
     viewer.data().set_mesh(V, F);
     viewer.launch();
 
     return 0;
 }
+
+// Matrix<stan::math::var, Dynamic, Dynamic> U(num_V, 3);
+// for (int i = 0; i < num_V; i++) {
+//     U(i, 0) = u(2*i,0);
+//     U(i, 1) = u(2*i+1,0);
+//     U(i, 2) = 0;
+// }
+// U = V+U;
+// V = U.cast<double>().eval();
