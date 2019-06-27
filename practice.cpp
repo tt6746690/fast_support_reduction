@@ -210,13 +210,14 @@ int main(int argc, char *argv[])
     Matrix<double, 2, 2> A;
     Matrix<stan::math::var, 2, 2> B;
 
-    A << 1, 2,
-         1, 2;
+    A << 1, 2, 3,
+         1, 2, 3;
 
     B << 3, 4,
+         3, 4,
          3, 4;
     
-    B = B + A;
+    B = A * B;
 
     cout << A << endl;
     cout << B << endl;

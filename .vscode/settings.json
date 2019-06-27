@@ -96,7 +96,12 @@
         "kroneckerproduct": "cpp",
         "mprealsupport": "cpp",
         "openglsupport": "cpp",
-        "splines": "cpp"
+        "splines": "cpp",
+        "__errc": "cpp",
+        "__node_handle": "cpp",
+        "future": "cpp",
+        "csetjmp": "cpp",
+        "*.ipp": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled",
     "C_Cpp.configurationWarnings": "Disabled"
