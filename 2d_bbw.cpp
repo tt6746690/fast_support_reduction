@@ -15,6 +15,7 @@
 #include <igl/deform_skeleton.h>
 #include <igl/normalize_row_sums.h>
 #include <igl/readDMAT.h>
+#include <igl/writeDMAT.h>
 #include <igl/readMESH.h>
 #include <igl/readOBJ.h>
 #include <igl/readTGF.h>
@@ -122,10 +123,10 @@ int main(int argc, char *argv[])
   using namespace Eigen;
   using namespace std;
 
-  igl::readOBJ(getfilepath("../data/", "cantilever", "obj"),V,F);
+  igl::readOBJ(getfilepath("../data/", "cantilever_new", "obj"),V,F);
 
   U=V;
-  igl::readTGF(getfilepath("../data/", "cantilever", "tgf"),C,BE);
+  igl::readTGF(getfilepath("../data/", "cantilever_new", "tgf"),C,BE);
   // retrieve parents for forward kinematics
   igl::directed_edge_parents(BE,P);
 
@@ -141,23 +142,29 @@ int main(int argc, char *argv[])
   MatrixXd bc;
   igl::boundary_conditions(V,F,C,VectorXi(),BE,MatrixXi(),b,bc);
 
-//   // compute BBW weights matrix
-//   igl::BBWData bbw_data;
-//   // only a few iterations for sake of demo
-//   bbw_data.active_set_params.max_iter = 20;
-//   bbw_data.verbosity = 2;
-//   if(!igl::bbw(V,F,b,bc,bbw_data,W))
-//   {
-//     return EXIT_FAILURE;
-//   }
+  // compute BBW weights matrix
+  igl::BBWData bbw_data;
+  // only a few iterations for sake of demo
+  bbw_data.active_set_params.max_iter = 20;
+  bbw_data.verbosity = 2;
+  if(!igl::bbw(V,F,b,bc,bbw_data,W))
+  {
+    return EXIT_FAILURE;
+  }
 
-  // read bbw weights
-  igl::readDMAT(getfilepath("../data/", "cantilever", "dmat"),W);
+  // // read bbw weights
+  // igl::readDMAT(getfilepath("../data/", "cantilever", "dmat"),W);
 
   // Normalize weights to sum to one
   igl::normalize_row_sums(W,W);
   // precompute linear blend skinning matrix
   igl::lbs_matrix(V,W,M);
+
+  // read bbw weights
+  igl::writeDMAT(getfilepath("../data/", "cantilever_new", "dmat"),W);
+
+
+
 
   // Plot the mesh with pseudocolors
   igl::opengl::glfw::Viewer viewer;
