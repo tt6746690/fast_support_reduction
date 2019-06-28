@@ -6,6 +6,8 @@
 using namespace Eigen;
 using namespace std;
 
+#include "compute_jacobian.h"
+
 // template <typename T1, typename T2, typename T3>
 // inline
 // typename boost::math::tools::promote_args<T1, T2, T3>::type
@@ -79,18 +81,23 @@ using namespace std;
 template <typename T>
 Eigen::Matrix<T, Eigen::Dynamic, 1> f( const Eigen::Matrix<T, Eigen::Dynamic, 1>& x)
 {
-  Eigen::SparseMatrix<T> G(2200,2200);
+  Eigen::SparseMatrix<T> G(20,20);
   std::vector<Eigen::Triplet<T> > ijv;
   ijv.emplace_back(0,0,x(0));
   ijv.emplace_back(1,1,x(1));
   ijv.emplace_back(2,2,x(2));
   ijv.emplace_back(3,3,x(3));
-  for(int d = 4;d<2200;d++) ijv.emplace_back(d,d,1);
+  for(int d = 4;d<20;d++) ijv.emplace_back(d,d,1);
   G.setFromTriplets(ijv.begin(),ijv.end());
   G.makeCompressed();
-  return (Eigen::RowVectorXd::Constant(1,2200,1) * G).transpose();
+  return (Eigen::RowVectorXd::Constant(1,20,1) * G).transpose();
 }
 
+int x = 5;
+
+void cool() {
+    cout << ::x << endl;
+}
 
 
 int main(int argc, char *argv[])
@@ -232,12 +239,48 @@ int main(int argc, char *argv[])
 
     //  cout << f.bottomRows(10) << endl;
 
-    Eigen::VectorXd x = Eigen::VectorXd::Constant(2200,1,1);
-    Eigen::MatrixXd J;
+    Eigen::VectorXd x = Eigen::VectorXd::Constant(20,1,1);
     Eigen::VectorXd fx;
-    stan::math::jacobian( f<stan::math::var>, x, fx, J);
 
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> J;
+
+    stan::math::start_nested();
+    Matrix<stan::math::var, Dynamic, 1> x_var(x.size());
+    for (int k = 0; k < x.size(); ++k) {
+      x_var(k) = x(k);
+    }
+    Matrix<stan::math::var, Dynamic, 1> fx_var = f(x_var);
+    fx.resize(fx_var.size());
+    for (int i = 0; i < fx_var.size(); ++i) {
+      fx(i) = fx_var(i).val();
+    }
+    J.resize(fx_var.size(), x.size());
+    for (int i = 0; i < fx_var.size(); ++i) {
+      if (i > 0)
+        stan::math::set_zero_all_adjoints_nested();
+      stan::math::grad(fx_var(i).vi_);
+      for (int k = 0; k < x.size(); ++k)
+        J(i, k) = x_var(k).adj();
+    }
+    stan::math::recover_memory_nested();
+
+    cout << J << endl;
+
+
+    // cout << ::x << endl;
+    // ::x = ::x + 1;
+    // cout << ::x << endl;
+
+    cool();
+
+    ::x = ::x + 1;
+
+    cool();
 
     return 0;
-
 }
+
+// stan::math::jacobian(f<stan::math::var>, x, fx, J);
+// cout << fx << endl;
+// cout << "--------------" << endl;
+// cout << f_x_var << endl;

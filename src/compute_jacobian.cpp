@@ -31,5 +31,6 @@ Matrix<double,Dynamic,Dynamic> & J) {
         for (int k = 0; k < V.size(); ++k)
             J(i, k) = V(k).adj();
     }
+    stan::math::recover_memory_nested();
 
 }

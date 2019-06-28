@@ -95,44 +95,46 @@ int main(int argc, char *argv[])
     Eigen::MatrixXi P;
     igl::directed_edge_parents(BE, P);
 
-    Matrix<stan::math::var,Dynamic,1> angles(m);
-    angles.setZero();
 
-    // init X
-    Matrix<stan::math::var,1,Dynamic> X(d*m);
-    X.setZero();
-    for (int j = 0; j < m; ++j) {
-        int k = d*j;
-        X(k+2) = angles(j); // 2d
-    }
+    Matrix<double, Dynamic, 1> u_d(dim*num_V);
+    SparseMatrix<double> K_d;
 
-    // Construct list of relative rotations in terms of quaternion
-    // from Euler's angle
-    RotationList dQ;
-    Matrix<stan::math::var,1,3> th;
-    for (int j = 0; j < BE.rows(); ++j) {
-        th = X.segment(3*j, 3);
-        dQ.emplace_back(
-            Eigen::AngleAxis<stan::math::var>(th(0), Eigen::Vector3d::UnitX()) *
-            Eigen::AngleAxis<stan::math::var>(th(1), Eigen::Vector3d::UnitY()) *
-            Eigen::AngleAxis<stan::math::var>(th(2), Eigen::Vector3d::UnitZ())
-        );
-    }
+    auto f = [&] (Matrix<stan::math::var,Dynamic,1> & angles_var) {
 
+        // init X
+        Matrix<stan::math::var,1,Dynamic> X(d*m);
+        X.setZero();
+        // update X
+        for (int j = 0; j < m; ++j) {
+            int k = d*j;
+            X(k+2) = angles_var(j); // 2d
+        }
 
-    // Forward kinematics
-    Matrix<stan::math::var,Dynamic,Dynamic> T;
-    forward_kinematics(C, BE, P, dQ, T);
-    U = M*T;
-
-    Matrix<stan::math::var,Dynamic,Dynamic> U_2;
-    U_2.resize(num_V, dim);
-    U_2 << U.col(0), U.col(1);
+        // Construct list of relative rotations in terms of quaternion
+        // from Euler's angle
+        RotationList dQ;
+        Matrix<stan::math::var,1,3> th;
+        for (int j = 0; j < BE.rows(); ++j) {
+            th = X.segment(3*j, 3);
+            dQ.emplace_back(
+                Eigen::AngleAxis<stan::math::var>(th(0), Eigen::Vector3d::UnitX()) *
+                Eigen::AngleAxis<stan::math::var>(th(1), Eigen::Vector3d::UnitY()) *
+                Eigen::AngleAxis<stan::math::var>(th(2), Eigen::Vector3d::UnitZ())
+            );
+        }
 
 
-    // Finite Element
-    bool fem = true;
-    if (fem) {
+        // Forward kinematics
+        Matrix<stan::math::var,Dynamic,Dynamic> T;
+        forward_kinematics(C, BE, P, dQ, T);
+        U = M*T;
+
+        Matrix<stan::math::var,Dynamic,Dynamic> U_2;
+        U_2.resize(num_V, dim);
+        U_2 << U.col(0), U.col(1);
+
+
+        // Finite Element
         // dirichlet boundary condition
         vector<int> fixedVertices;
         double tolerance = (V.col(0).maxCoeff() - V.col(0).minCoeff()) * 0.005;
@@ -177,8 +179,8 @@ int main(int argc, char *argv[])
             auto v2 = U_2.row(ele_i(2));
 
             C_ << 1, v0,
-                  1, v1,
-                  1, v2;
+                1, v1,
+                1, v2;
 
             IC = C_.inverse();
             tri_area = C_.determinant()/2;
@@ -238,17 +240,13 @@ int main(int argc, char *argv[])
         Matrix<stan::math::var, Dynamic, 1> u(dim*num_V);
         u = solver.solve(f); // displacements
 
-        Matrix<double, Dynamic, 1> u_d(dim*num_V);
         for (int i = 0; i < dim*num_V; i++) {
             u_d(i) = u(i).val();
         }
 
-        cout << u_d.bottomRows(10) << endl;
+        Matrix<stan::math::var,Dynamic,1> t(dim*num_V);
+        t = f-K*u_d;
 
-        Matrix<stan::math::var,Dynamic,1> t1(dim*num_V);
-        t1 = K*u_d;
-
-        SparseMatrix<double> K_d;
         K_d.resize(K.rows(),K.cols());
         for (int i = 0; i < K.outerSize(); ++i) {
             // Iterate over inside
@@ -258,18 +256,32 @@ int main(int argc, char *argv[])
             }
         }
 
-        Matrix<double,Dynamic,Dynamic> J1;
-        compute_jacobian(angles, t1, J1); // slow
 
-        Matrix<double,Dynamic,Dynamic> J2;
-        compute_jacobian(angles, f, J2); // slow
-
-        SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
-        Matrix<double, Dynamic, Dynamic> tar(dim*num_V,m);
-        tar = solver_d.solve(J2-J1);
-
-
+        return t;
     };
+
+
+    // design variables: euler angle
+    Matrix<double,Dynamic,1> x(m);
+    x.setZero();
+
+    Eigen::MatrixXd J;
+    Eigen::VectorXd fx;
+    stan::math::jacobian(f, x, fx, J);
+
+
+    SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
+    Matrix<double, Dynamic, Dynamic> tar(dim*num_V,m);
+    tar = solver_d.solve(J);
+
+    Matrix<double, Dynamic, Dynamic> gradient(m,1);
+    gradient = 2*tar.transpose().eval()*u_d;
+
+    cout << gradient << endl;
+
+
+    // auto result = f(x);
+
 
     viewer.data().set_mesh(V, F);
     set_color(viewer);
@@ -311,3 +323,44 @@ int main(int argc, char *argv[])
 //     }
 // }
 // cout << J1 << endl;
+
+
+// SparseMatrix<double> K_d;
+// K_d.resize(K.rows(),K.cols());
+// for (int i = 0; i < K.outerSize(); ++i) {
+//     // Iterate over inside
+//     for (SparseMatrix<stan::math::var>::InnerIterator it (K,i); it; ++it) {
+//         // it.row(),  it.col(), it.value()
+//         K_d.coeffRef(it.row(),it.col()) = it.value().val();
+//     }
+// }
+
+// Matrix<double,Dynamic,Dynamic> J1;
+// compute_jacobian(angles, t1, J1); // slow
+
+// Matrix<double,Dynamic,Dynamic> J2;
+// compute_jacobian(angles, f, J2); // slow
+
+// Matrix<double,Dynamic,Dynamic> J(dim*num_V,dim*num_V);
+// J = J2-J1;
+
+// SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
+// Matrix<double, Dynamic, Dynamic> tar(dim*num_V,m);
+// tar = solver_d.solve(J);
+
+
+// int counter = 0;
+// for (int i = 0; i < t1.size(); i++) {
+//     for (int j = 0; j < angles.size(); j++) {
+//         if (J(i,j) != 0) {
+//             counter++;
+//         } 
+//     }
+// }
+
+// cout << counter << endl;
+
+// Matrix<double, Dynamic, Dynamic> gradient(m,1);
+// gradient = 2*tar.transpose().eval()*u_d;
+
+// cout << gradient << endl;
