@@ -39,3 +39,11 @@
     + autodiff can differentiate algorithm, not just expression
     + implement your own AD in one day 
         + http://blog.rogerluo.me/2018/10/23/write-an-ad-in-one-day/
+
++ stan C++
+    + sparse jacobian
+        + https://discourse.mc-stan.org/t/can-stan-compute-jacobian-as-a-eigen-sparsematrix/7189
+        + https://mc-stan.org/math/d4/da7/var_8hpp_source.html
+
++ eigen
+    + https://www.cc.gatech.edu/classes/AY2015/cs4496_spring/Eigen.html

@@ -207,27 +207,16 @@ int main(int argc, char *argv[])
 
     // cout << A.row(1) << endl;
 
-    Matrix<double, 2, 2> A;
-    Matrix<stan::math::var, 2, 2> B;
 
-    A << 1, 2, 3,
-         1, 2, 3;
 
-    B << 3, 4,
-         3, 4,
-         3, 4;
-    
-    B = A * B;
+     SparseMatrix<stan::math::var> K;
+     K.resize(100, 100);
+     Matrix<double, Dynamic, 1> u(100);
+     u.setZero();
 
-    cout << A << endl;
-    cout << B << endl;
+     auto f = K*u;
 
-    // for (int i = 0; i < 2; i++) {
-    //     A << 1, 1,
-    //          1, i;
-
-    //     cout << A << endl;
-    // }
+     cout << f.bottomRows(10) << endl;
 
 
 

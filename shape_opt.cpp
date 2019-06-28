@@ -5,6 +5,7 @@
 #include <boost/math/tools/promotion.hpp>
 #include <functional>
 
+#include "compute_jacobian.h"
 #include "forward_kinematics.h"
 #include "lbs_matrix.h"
 
@@ -25,7 +26,7 @@ typedef
 
 
 int selected = 0;
-MatrixXd V, V_2, W, C, T;
+MatrixXd V, W, C, T;
 MatrixXi F, BE;
 
 const Eigen::RowVector3d red(255./255.,0./255.,0./255.);
@@ -82,9 +83,6 @@ int main(int argc, char *argv[])
     const int dim = 2;
     const int num_V = V.rows();
 
-    V_2.resize(num_V, dim);
-    V_2 << V.col(0), V.col(1);
-
     int m = W.cols(); // number of bones
     int d = V.cols();
 
@@ -98,19 +96,16 @@ int main(int argc, char *argv[])
     igl::directed_edge_parents(BE, P);
 
 
+    Matrix<stan::math::var,Dynamic,1> angles(4);
+    angles.setZero();
+
+
     // init X
     Matrix<stan::math::var,1,Dynamic> X(d*m);
     X.setZero();
-
-    vector<stan::math::var> angles;
-    stan::math::var a0 = 0; angles.push_back(a0);
-    stan::math::var a1 = 0; angles.push_back(a1);
-    stan::math::var a2 = 0; angles.push_back(a2);
-    stan::math::var a3 = 0; angles.push_back(a3);
-
     for (int j = 0; j < m; ++j) {
         int k = d*j;
-        X(k+2) = angles[j]; // 2d
+        X(k+2) = angles(j); // 2d
     }
 
     // Construct list of relative rotations in terms of quaternion
@@ -129,19 +124,16 @@ int main(int argc, char *argv[])
 
     // Forward kinematics
     Matrix<stan::math::var,Dynamic,Dynamic> T;
-
     forward_kinematics(C, BE, P, dQ, T);
-
-    std::cout << T << std::endl;
-
     U = M*T;
 
-
-
+    Matrix<stan::math::var,Dynamic,Dynamic> U_2;
+    U_2.resize(num_V, dim);
+    U_2 << U.col(0), U.col(1);
 
 
     // Finite Element
-    bool fem = false;
+    bool fem = true;
     if (fem) {
         // dirichlet boundary condition
         vector<int> fixedVertices;
@@ -170,11 +162,11 @@ int main(int argc, char *argv[])
         vector<Triplet<stan::math::var>> triplets;
         triplets.reserve(F.rows()*3*3*2*2);
 
-        Matrix<stan::math::var, 3, 3> C_;
-        Matrix<stan::math::var, 3, 3> IC;
-        Matrix<stan::math::var, 3, 6> B;
+        Matrix<stan::math::var,3,3> C_;
+        Matrix<stan::math::var,3,3> IC;
+        Matrix<stan::math::var,3,6> B;
         B.setZero();
-        Matrix<stan::math::var, 6, 6> Ke;
+        Matrix<stan::math::var,6,6> Ke;
         stan::math::var tri_area;
 
         Matrix<stan::math::var, Dynamic, Dynamic> Bs(3*F.rows(),6);
@@ -182,9 +174,9 @@ int main(int argc, char *argv[])
         for (int i = 0; i < F.rows(); i++) {
 
             auto ele_i = F.row(i);
-            auto v0 = V_2.row(ele_i(0));
-            auto v1 = V_2.row(ele_i(1));
-            auto v2 = V_2.row(ele_i(2));
+            auto v0 = U_2.row(ele_i(0));
+            auto v1 = U_2.row(ele_i(1));
+            auto v2 = U_2.row(ele_i(2));
 
             C_ << 1, v0,
                 1, v1,
@@ -245,7 +237,31 @@ int main(int argc, char *argv[])
 
         // solve for displacements at each vertex Kd = f
         SimplicialLDLT<SparseMatrix<stan::math::var>> solver(K);
-        auto u = solver.solve(f); // displacements
+        Matrix<stan::math::var, Dynamic, 1> u(dim*num_V);
+        u = solver.solve(f); // displacements
+
+        Matrix<double, Dynamic, 1> u_d(dim*num_V);
+        for (int i = 0; i < dim*num_V; i++) {
+            u_d(i) = u(i).val();
+        }
+
+        cout << u_d.bottomRows(10) << endl;
+
+        Matrix<stan::math::var,Dynamic,1> t1(dim*num_V);
+        t1 = K*u_d;
+
+        Matrix<double,Dynamic,Dynamic> J1;
+        compute_jacobian(angles, t1, J1); // slow
+
+        cout << J1.bottomRows(20) << endl;
+
+        cout << "-----------" << endl;
+
+
+        Matrix<double,Dynamic,Dynamic> J2;
+        compute_jacobian(angles, f, J2); // slow
+
+        cout << J2.bottomRows(20) << endl;
 
     };
 
@@ -261,8 +277,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-
-// DEBUG
+// DEBUGGING
 // for (auto i = fixedVertices.begin(); i != fixedVertices.end(); ++i) {
 //     cout << *i << endl;
 // }
@@ -276,3 +291,17 @@ int main(int argc, char *argv[])
 // }
 // U = V+U;
 // V = U.cast<double>().eval();
+
+
+// cout << u.bottomRows(10) << endl;
+
+
+// int counter = 0;
+// for (int i = 0; i < t1.size(); i++) {
+//     for (int j = 0; j < angles.size(); j++) {
+//         if (J1(i,j) != 0) {
+//             counter++;
+//         } 
+//     }
+// }
+// cout << J1 << endl;
