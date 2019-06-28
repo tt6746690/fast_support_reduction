@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
     igl::readDMAT(getfilepath(filename, "dmat"), W);
     igl::readTGF(getfilepath(filename, "tgf"), C, BE);
 
-    Matrix<stan::math::var,Dynamic,Dynamic> U(V.rows(),V.cols());
+    Matrix<stan::math::var,Dynamic,Dynamic> U; U.resizeLike(V);
     Matrix<stan::math::var,Dynamic,Dynamic> M;
 
     const int dim = 2;
@@ -95,10 +95,8 @@ int main(int argc, char *argv[])
     Eigen::MatrixXi P;
     igl::directed_edge_parents(BE, P);
 
-
-    Matrix<stan::math::var,Dynamic,1> angles(4);
+    Matrix<stan::math::var,Dynamic,1> angles(m);
     angles.setZero();
-
 
     // init X
     Matrix<stan::math::var,1,Dynamic> X(d*m);
@@ -179,8 +177,8 @@ int main(int argc, char *argv[])
             auto v2 = U_2.row(ele_i(2));
 
             C_ << 1, v0,
-                1, v1,
-                1, v2;
+                  1, v1,
+                  1, v2;
 
             IC = C_.inverse();
             tri_area = C_.determinant()/2;
@@ -250,18 +248,26 @@ int main(int argc, char *argv[])
         Matrix<stan::math::var,Dynamic,1> t1(dim*num_V);
         t1 = K*u_d;
 
+        SparseMatrix<double> K_d;
+        K_d.resize(K.rows(),K.cols());
+        for (int i = 0; i < K.outerSize(); ++i) {
+            // Iterate over inside
+            for (SparseMatrix<stan::math::var>::InnerIterator it (K,i); it; ++it) {
+                // it.row(),  it.col(), it.value()
+                K_d.coeffRef(it.row(),it.col()) = it.value().val();
+            }
+        }
+
         Matrix<double,Dynamic,Dynamic> J1;
         compute_jacobian(angles, t1, J1); // slow
-
-        cout << J1.bottomRows(20) << endl;
-
-        cout << "-----------" << endl;
-
 
         Matrix<double,Dynamic,Dynamic> J2;
         compute_jacobian(angles, f, J2); // slow
 
-        cout << J2.bottomRows(20) << endl;
+        SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
+        Matrix<double, Dynamic, Dynamic> tar(dim*num_V,m);
+        tar = solver_d.solve(J2-J1);
+
 
     };
 

@@ -76,6 +76,22 @@ using namespace std;
 // }
 
 
+template <typename T>
+Eigen::Matrix<T, Eigen::Dynamic, 1> f( const Eigen::Matrix<T, Eigen::Dynamic, 1>& x)
+{
+  Eigen::SparseMatrix<T> G(2200,2200);
+  std::vector<Eigen::Triplet<T> > ijv;
+  ijv.emplace_back(0,0,x(0));
+  ijv.emplace_back(1,1,x(1));
+  ijv.emplace_back(2,2,x(2));
+  ijv.emplace_back(3,3,x(3));
+  for(int d = 4;d<2200;d++) ijv.emplace_back(d,d,1);
+  G.setFromTriplets(ijv.begin(),ijv.end());
+  G.makeCompressed();
+  return (Eigen::RowVectorXd::Constant(1,2200,1) * G).transpose();
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -207,19 +223,19 @@ int main(int argc, char *argv[])
 
     // cout << A.row(1) << endl;
 
+    //  SparseMatrix<stan::math::var> K;
+    //  K.resize(100, 100);
+    //  Matrix<double, Dynamic, 1> u(100);
+    //  u.setZero();
 
+    //  auto f = K*u;
 
-     SparseMatrix<stan::math::var> K;
-     K.resize(100, 100);
-     Matrix<double, Dynamic, 1> u(100);
-     u.setZero();
+    //  cout << f.bottomRows(10) << endl;
 
-     auto f = K*u;
-
-     cout << f.bottomRows(10) << endl;
-
-
-
+    Eigen::VectorXd x = Eigen::VectorXd::Constant(2200,1,1);
+    Eigen::MatrixXd J;
+    Eigen::VectorXd fx;
+    stan::math::jacobian( f<stan::math::var>, x, fx, J);
 
 
     return 0;
