@@ -123,10 +123,10 @@ int main(int argc, char *argv[])
   using namespace Eigen;
   using namespace std;
 
-  igl::readOBJ(getfilepath("../data/", "cantilever_new", "obj"),V,F);
+  igl::readOBJ(getfilepath("../data/", "cantilever_M", "obj"),V,F);
 
   U=V;
-  igl::readTGF(getfilepath("../data/", "cantilever_new", "tgf"),C,BE);
+  igl::readTGF(getfilepath("../data/", "cantilever_M", "tgf"),C,BE);
   // retrieve parents for forward kinematics
   igl::directed_edge_parents(BE,P);
 
@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+
   // // read bbw weights
   // igl::readDMAT(getfilepath("../data/", "cantilever", "dmat"),W);
 
@@ -161,7 +162,7 @@ int main(int argc, char *argv[])
   igl::lbs_matrix(V,W,M);
 
   // read bbw weights
-  igl::writeDMAT(getfilepath("../data/", "cantilever_new", "dmat"),W);
+  igl::writeDMAT(getfilepath("../data/", "cantilever_M", "dmat"),W);
 
 
 

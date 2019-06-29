@@ -17,6 +17,8 @@
 #include <igl/readDMAT.h>
 #include <igl/readTGF.h>
 
+#include "minitrace.h"
+
 using namespace Eigen;
 using namespace std;
 
@@ -71,8 +73,11 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 
 int main(int argc, char *argv[])
 {
+
+    mtr_init("trace.json");
+
     igl::opengl::glfw::Viewer viewer;
-    string filename = "cantilever";
+    string filename = "cantilever_S";
     igl::readOBJ(getfilepath(filename, "obj"), V, F);
     igl::readDMAT(getfilepath(filename, "dmat"), W);
     igl::readTGF(getfilepath(filename, "tgf"), C, BE);
@@ -105,9 +110,9 @@ int main(int argc, char *argv[])
         Matrix<stan::math::var,1,Dynamic> X(d*m);
         X.setZero();
         // update X
-        for (int j = 0; j < m; ++j) {
+        for (int j = 1; j < m; ++j) {
             int k = d*j;
-            X(k+2) = angles_var(j); // 2d
+            X(k+2) = angles_var(j-1); // 2d
         }
 
         // Construct list of relative rotations in terms of quaternion
@@ -256,18 +261,23 @@ int main(int argc, char *argv[])
             }
         }
 
-
         return t;
     };
 
 
     // design variables: euler angle
-    Matrix<double,Dynamic,1> x(m);
+    Matrix<double,Dynamic,1> x(m-1);
     x.setZero();
+
+
+
+    MTR_BEGIN("C++", "jacobian");
 
     Eigen::MatrixXd J;
     Eigen::VectorXd fx;
     stan::math::jacobian(f, x, fx, J);
+
+    MTR_END("C++", "jacobian");
 
 
     SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
@@ -280,8 +290,6 @@ int main(int argc, char *argv[])
     cout << gradient << endl;
 
 
-    // auto result = f(x);
-
 
     viewer.data().set_mesh(V, F);
     set_color(viewer);
@@ -291,6 +299,11 @@ int main(int argc, char *argv[])
     viewer.data().line_width = 10;
     viewer.callback_key_down = &key_down;
     viewer.launch();
+
+
+    mtr_flush();
+    mtr_shutdown();
+
 
     return 0;
 }
