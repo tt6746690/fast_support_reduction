@@ -61,6 +61,13 @@ include_directories(libs/math/lib/gtest_1.8.1)
 include_directories(libs/math/lib/opencl_1.2.8)
 
 
+# boost
+FIND_PACKAGE(Boost REQUIRED)
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+link_directories(${Boost_LIBRARY_DIR})
+
+
+
 # source files
 include_directories(src)
 include_directories(src/opengl)
@@ -83,7 +90,7 @@ file(GLOB SRCFILES
 # executables
 
 add_executable(shape_opt shape_opt.cpp ${SRCFILES})
-target_link_libraries(shape_opt igl::core igl::opengl_glfw igl::png igl::tetgen)
+target_link_libraries(shape_opt igl::core igl::opengl_glfw igl::png igl::tetgen ${Boost_LIBRARIES})
 
 add_executable(practice practice.cpp ${SRCFILES})
 target_link_libraries(practice igl::core igl::opengl_glfw igl::png igl::tetgen)
@@ -91,8 +98,8 @@ target_link_libraries(practice igl::core igl::opengl_glfw igl::png igl::tetgen)
 # add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 # target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png igl::tetgen)
 
-add_executable(2d_bbw 2d_bbw.cpp ${SRCFILES})
-target_link_libraries(2d_bbw igl::core igl::opengl_glfw igl::png igl::tetgen)
+# add_executable(2d_bbw 2d_bbw.cpp ${SRCFILES})
+# target_link_libraries(2d_bbw igl::core igl::opengl_glfw igl::png igl::tetgen)
 
 # add_executable(gl gl.cpp ${SRCFILES})
 # target_link_libraries(gl igl::core igl::opengl_glfw igl::png igl::tetgen)

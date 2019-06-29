@@ -17,7 +17,10 @@
 #include <igl/readDMAT.h>
 #include <igl/readTGF.h>
 
+#include <boost/math/tools/minima.hpp>
+
 #include "minitrace.h"
+
 
 using namespace Eigen;
 using namespace std;
@@ -70,6 +73,19 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 }
 
 
+struct objfunc
+{
+    objfunc(Vector3d x, Vector3d dx) : x(x), dx(dx) {}
+    double operator()(double const& t) {
+        double result = (x-t*dx).transpose().eval()*(x-t*dx);
+        return result;
+    }
+
+    private:
+        Vector3d x, dx;
+};
+
+
 
 int main(int argc, char *argv[])
 {
@@ -85,7 +101,7 @@ int main(int argc, char *argv[])
     Matrix<stan::math::var,Dynamic,Dynamic> U; U.resizeLike(V);
     Matrix<stan::math::var,Dynamic,Dynamic> M;
 
-    const int dim = 2;
+    const int dim = V.cols()-1;
     const int num_V = V.rows();
 
     int m = W.cols(); // number of bones
@@ -99,6 +115,25 @@ int main(int argc, char *argv[])
     // Retrieve parents for forward kinematics
     Eigen::MatrixXi P;
     igl::directed_edge_parents(BE, P);
+
+
+    // dirichlet boundary condition
+    vector<int> fixedVertices;
+    double tolerance = (V.col(0).maxCoeff() - V.col(0).minCoeff()) * 0.005;
+    double min_Y = V.col(0).minCoeff();
+    for (int i = 0; i < V.rows(); i++) {
+        if (abs(V(i, 0)-min_Y) < tolerance) {
+            fixedVertices.push_back(i);
+        }
+    }
+
+
+    // construct the elasticity matrix D
+    MatrixXd D(3, 3);
+    D << 1, mu, 0,
+        mu,  1, 0,
+        0,  0, 0.5*(1-mu);
+    D *= young/(1-mu*mu);
 
 
     Matrix<double, Dynamic, 1> u_d(dim*num_V);
@@ -139,30 +174,12 @@ int main(int argc, char *argv[])
         U_2 << U.col(0), U.col(1);
 
 
-        // Finite Element
-        // dirichlet boundary condition
-        vector<int> fixedVertices;
-        double tolerance = (V.col(0).maxCoeff() - V.col(0).minCoeff()) * 0.005;
-        double min_Y = V.col(0).minCoeff();
-        for (int i = 0; i < V.rows(); i++) {
-            if (abs(V(i, 0)-min_Y) < tolerance) {
-                fixedVertices.push_back(i);
-            }
-        }
-
-
         // prepare K and f
         SparseMatrix<stan::math::var> K;
         K.resize(dim*num_V, dim*num_V);
         Matrix<stan::math::var, Dynamic, 1> f(dim*num_V);
         f.setZero();
 
-        // construct the elasticity matrix D
-        MatrixXd D(3, 3);
-        D << 1, mu, 0,
-            mu,  1, 0,
-            0,  0, 0.5*(1-mu);
-        D *= young/(1-mu*mu);
 
         vector<Triplet<stan::math::var>> triplets;
         triplets.reserve(F.rows()*3*3*2*2);
@@ -265,40 +282,63 @@ int main(int argc, char *argv[])
     };
 
 
-    // design variables: euler angle
-    Matrix<double,Dynamic,1> x(m-1);
-    x.setZero();
-
-
-
-    MTR_BEGIN("C++", "jacobian");
+    SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
+    Matrix<double, Dynamic, Dynamic> tar(dim*num_V,m-1);
+    Matrix<double, Dynamic, Dynamic> dx(m-1,1);
 
     Eigen::MatrixXd J;
     Eigen::VectorXd fx;
-    stan::math::jacobian(f, x, fx, J);
 
-    MTR_END("C++", "jacobian");
-
-
-    SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
-    Matrix<double, Dynamic, Dynamic> tar(dim*num_V,m);
-    tar = solver_d.solve(J);
-
-    Matrix<double, Dynamic, Dynamic> gradient(m,1);
-    gradient = 2*tar.transpose().eval()*u_d;
-
-    cout << gradient << endl;
+    // design variables: euler angle
+    Matrix<double,Dynamic,1> x(m-1);
+    x.setZero();
+    for (int i = 0; i < m-1; i++) {
+        x(i) = 0.5;
+    }
 
 
+    // gradient descent
+    double tol = 1e-10;
+    double diff = 100;
 
-    viewer.data().set_mesh(V, F);
-    set_color(viewer);
-    viewer.data().set_edges(C, BE, red);
-    viewer.data().add_points(C, red);
-    viewer.data().show_lines = false;
-    viewer.data().line_width = 10;
-    viewer.callback_key_down = &key_down;
-    viewer.launch();
+    while (diff > tol) {
+
+        stan::math::jacobian(f, x, fx, J);
+        tar = solver_d.solve(J);
+        dx = 2*tar.transpose().eval()*u_d;
+
+        objfunc obj(x,dx);
+        // find the optimal step length
+        int bits = std::numeric_limits<double>::digits;
+        std::pair<double, double> r = boost::math::tools::brent_find_minima(obj, 0., 100., bits);
+        std::cout.precision(std::numeric_limits<double>::digits10);
+
+        x = x - r.first*dx;
+
+        diff = dx.norm();
+
+        cout << r.first << endl;
+        cout << x << endl;
+
+    }
+
+
+
+
+
+
+
+
+
+    // // viewer
+    // viewer.data().set_mesh(V, F);
+    // set_color(viewer);
+    // viewer.data().set_edges(C, BE, red);
+    // viewer.data().add_points(C, red);
+    // viewer.data().show_lines = false;
+    // viewer.data().line_width = 10;
+    // viewer.callback_key_down = &key_down;
+    // viewer.launch();
 
 
     mtr_flush();
