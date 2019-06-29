@@ -37,7 +37,7 @@ MatrixXi F, BE;
 const Eigen::RowVector3d red(255./255.,0./255.,0./255.);
 const double young = 1.45e5; // Young's modulus
 const double mu = 0.45; // possion ratio
-const double g = -9.8;
+const double g = -98;
 
 
 inline string getfilepath(const string& name, const string& ext) { 
@@ -73,17 +73,56 @@ bool key_down(igl::opengl::glfw::Viewer &viewer, unsigned char key, int mods)
 }
 
 
-struct objfunc
-{
-    objfunc(Vector3d x, Vector3d dx) : x(x), dx(dx) {}
-    double operator()(double const& t) {
-        double result = (x-t*dx).transpose().eval()*(x-t*dx);
-        return result;
-    }
+// struct objfunc
+// {
+//     objfunc(Vector3d x, Vector3d dx) : x(x), dx(dx) {}
+//     double operator()(double const& t) {
+//         double result = (x+t*dx).transpose().eval()*(x+t*dx);
+//         // double result = (t+3)*(t-2);
+//         return result;
+//     }
 
-    private:
-        Vector3d x, dx;
-};
+//     private:
+//         Vector3d x, dx;
+// };
+
+
+// template <typename T>
+// void angle_to_transformation (
+//     Matrix<T,Dynamic,1> & angles_var,
+//     MatrixXd & C,
+//     MatrixXi & BE,
+//     MatrixXi & P,
+//     int d,
+//     int m, 
+//     Matrix<T,Dynamic,Dynamic> & Tr) {
+
+//     // init X
+//     Matrix<T,1,Dynamic> X(d*m);
+//     X.setZero();
+//     // update X
+//     for (int j = 1; j < m; ++j) {
+//         int k = d*j;
+//         X(k+2) = angles_var(j-1); // 2d
+//     }
+
+//     // Construct list of relative rotations in terms of quaternion
+//     // from Euler's angle
+//     std::vector<Eigen::Quaternion<T>, Eigen::aligned_allocator<Eigen::Quaternion<T>>> dQ;
+//     Matrix<T,1,3> th;
+//     for (int j = 0; j < BE.rows(); ++j) {
+//         th = X.segment(3*j, 3);
+//         dQ.emplace_back(
+//             Eigen::AngleAxis<T>(th(0), Eigen::Vector3d::UnitX()) *
+//             Eigen::AngleAxis<T>(th(1), Eigen::Vector3d::UnitY()) *
+//             Eigen::AngleAxis<T>(th(2), Eigen::Vector3d::UnitZ())
+//         );
+//     }
+
+//     // Forward kinematics
+//     forward_kinematics(C, BE, P, dQ, Tr);
+// }
+
 
 
 
@@ -167,6 +206,7 @@ int main(int argc, char *argv[])
         // Forward kinematics
         Matrix<stan::math::var,Dynamic,Dynamic> T;
         forward_kinematics(C, BE, P, dQ, T);
+
         U = M*T;
 
         Matrix<stan::math::var,Dynamic,Dynamic> U_2;
@@ -266,6 +306,9 @@ int main(int argc, char *argv[])
             u_d(i) = u(i).val();
         }
 
+        // cout << u_d.bottomRows(10) << endl;
+
+
         Matrix<stan::math::var,Dynamic,1> t(dim*num_V);
         t = f-K*u_d;
 
@@ -282,7 +325,6 @@ int main(int argc, char *argv[])
     };
 
 
-    SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
     Matrix<double, Dynamic, Dynamic> tar(dim*num_V,m-1);
     Matrix<double, Dynamic, Dynamic> dx(m-1,1);
 
@@ -298,47 +340,81 @@ int main(int argc, char *argv[])
 
 
     // gradient descent
-    double tol = 1e-10;
+    double tol = 1e-5;
     double diff = 100;
+
+    double step_size = 0.01; // fixed step size
 
     while (diff > tol) {
 
         stan::math::jacobian(f, x, fx, J);
+        SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
         tar = solver_d.solve(J);
         dx = 2*tar.transpose().eval()*u_d;
 
-        objfunc obj(x,dx);
-        // find the optimal step length
-        int bits = std::numeric_limits<double>::digits;
-        std::pair<double, double> r = boost::math::tools::brent_find_minima(obj, 0., 100., bits);
-        std::cout.precision(std::numeric_limits<double>::digits10);
+        // objfunc obj(x,dx);
+        // // find the optimal step length
+        // int bits = std::numeric_limits<double>::digits;
+        // std::pair<double, double> r = boost::math::tools::brent_find_minima(obj, 0., 100., bits);
+        // std::cout.precision(std::numeric_limits<double>::digits10);
 
-        x = x - r.first*dx;
+        x = x+step_size*dx;
 
         diff = dx.norm();
 
-        cout << r.first << endl;
-        cout << x << endl;
+        cout << "x: " << x << endl; 
+        cout << "dx: " << dx.norm() << endl;
 
     }
 
 
+    // init X
+    Matrix<double,1,Dynamic> X(d*m);
+    X.setZero();
+    // update X
+    for (int j = 1; j < m; ++j) {
+        int k = d*j;
+        X(k+2) = x(j-1); // 2d
+    }
+
+    // Construct list of relative rotations in terms of quaternion
+    // from Euler's angle
+    std::vector<Eigen::Quaternion<double>, Eigen::aligned_allocator<Eigen::Quaternion<double>>> dQ;
+    Matrix<double,1,3> th;
+    for (int j = 0; j < BE.rows(); ++j) {
+        th = X.segment(3*j, 3);
+        dQ.emplace_back(
+            Eigen::AngleAxis<double>(th(0), Eigen::Vector3d::UnitX()) *
+            Eigen::AngleAxis<double>(th(1), Eigen::Vector3d::UnitY()) *
+            Eigen::AngleAxis<double>(th(2), Eigen::Vector3d::UnitZ())
+        );
+    }
 
 
+    // Forward kinematics
+    Matrix<double,Dynamic,Dynamic> T;
+    igl::forward_kinematics(C, BE, P, dQ, T);
 
 
+    std::cout << T << std::endl;
+
+    // LBS
+    Matrix<double,Dynamic,Dynamic> M_d;
+    igl::lbs_matrix(V, W, M_d);
+
+    Matrix<double,Dynamic,Dynamic> U_d;
+    U_d = M_d*T;
 
 
-
-    // // viewer
-    // viewer.data().set_mesh(V, F);
-    // set_color(viewer);
-    // viewer.data().set_edges(C, BE, red);
-    // viewer.data().add_points(C, red);
-    // viewer.data().show_lines = false;
-    // viewer.data().line_width = 10;
-    // viewer.callback_key_down = &key_down;
-    // viewer.launch();
+    // viewer
+    viewer.data().set_mesh(U_d, F);
+    set_color(viewer);
+    viewer.data().set_edges(C, BE, red);
+    viewer.data().add_points(C, red);
+    viewer.data().show_lines = false;
+    viewer.data().line_width = 10;
+    viewer.callback_key_down = &key_down;
+    viewer.launch();
 
 
     mtr_flush();
