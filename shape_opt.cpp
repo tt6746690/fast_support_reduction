@@ -13,6 +13,7 @@
 #include <igl/directed_edge_parents.h>
 #include <igl/forward_kinematics.h>
 #include <igl/lbs_matrix.h>
+#include <igl/deform_skeleton.h>
 #include <igl/readOBJ.h>
 #include <igl/readDMAT.h>
 #include <igl/readTGF.h>
@@ -31,9 +32,11 @@ typedef
 
 
 int selected = 0;
-MatrixXd V, W, C, T;
-MatrixXi F, BE;
+MatrixXd V, W, C, CT, T;
+MatrixXi F, BE, BET;
 
+const Eigen::RowVector3d blue(0.3,0.4,1.0);
+const Eigen::RowVector3d orange(0.8,0.5,0.2);
 const Eigen::RowVector3d red(255./255.,0./255.,0./255.);
 const double young = 1.45e5; // Young's modulus
 const double mu = 0.45; // possion ratio
@@ -306,7 +309,7 @@ int main(int argc, char *argv[])
             u_d(i) = u(i).val();
         }
 
-        // cout << u_d.bottomRows(10) << endl;
+        cout << u_d.bottomRows(10) << endl;
 
 
         Matrix<stan::math::var,Dynamic,1> t(dim*num_V);
@@ -331,41 +334,80 @@ int main(int argc, char *argv[])
     Eigen::MatrixXd J;
     Eigen::VectorXd fx;
 
-    // design variables: euler angle
+
+    // Matrix<stan::math::var,Dynamic,1> x(m-1);
+    // x(0) = 1.25877;
+    // x(1) = 0.968614;
+    // x(2) = 0.667564;
+
+    // Matrix<stan::math::var,Dynamic,1> result = f(x);
+    // cout << u_d.norm() << endl;
+
+
+    // for (int i = 0; i < 20; i++) { 
+
+    //     // design variables: euler angle
+    //     Matrix<stan::math::var,Dynamic,1> x(m-1);
+    //     x.setZero();
+    //     for (int j = 0; j < m-1; j++) {
+    //         x(j) = 0.05*i;
+    //     }
+
+    //     Matrix<stan::math::var,Dynamic,1> result = f(x);
+
+    //     cout << u_d.norm() << endl;
+
+    // }
+
+
+    // // design variables: euler angle
+    // Matrix<double,Dynamic,1> x(m-1);
+    // x.setZero();
+    // for (int i = 0; i < m-1; i++) {
+    //     x(i) = 0.5;
+    // }
+
+
+    // // gradient descent
+    // double tol = 1e-5;
+    // double diff = 100;
+
+    // double step_size = 0.001; // fixed step size
+
+    // while (diff > tol) {
+
+    //     stan::math::jacobian(f, x, fx, J);
+    //     SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
+    //     tar = solver_d.solve(J);
+    //     dx = 2*tar.transpose().eval()*u_d;
+
+    //     // objfunc obj(x,dx);
+    //     // // find the optimal step length
+    //     // int bits = std::numeric_limits<double>::digits;
+    //     // std::pair<double, double> r = boost::math::tools::brent_find_minima(obj, 0., 100., bits);
+    //     // std::cout.precision(std::numeric_limits<double>::digits10);
+
+    //     x = x-step_size*dx;
+
+    //     diff = dx.norm();
+
+    //     cout << "x: " << x << endl; 
+    //     cout << "dx: " << dx.norm() << endl;
+
+    // }
+
+
+
+
+
     Matrix<double,Dynamic,1> x(m-1);
-    x.setZero();
-    for (int i = 0; i < m-1; i++) {
-        x(i) = 0.5;
-    }
-
-
-    // gradient descent
-    double tol = 1e-5;
-    double diff = 100;
-
-    double step_size = 0.01; // fixed step size
-
-    while (diff > tol) {
-
-        stan::math::jacobian(f, x, fx, J);
-        SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
-        tar = solver_d.solve(J);
-        dx = 2*tar.transpose().eval()*u_d;
-
-        // objfunc obj(x,dx);
-        // // find the optimal step length
-        // int bits = std::numeric_limits<double>::digits;
-        // std::pair<double, double> r = boost::math::tools::brent_find_minima(obj, 0., 100., bits);
-        // std::cout.precision(std::numeric_limits<double>::digits10);
-
-        x = x+step_size*dx;
-
-        diff = dx.norm();
-
-        cout << "x: " << x << endl; 
-        cout << "dx: " << dx.norm() << endl;
-
-    }
+    // x.setZero();
+    // x(0) = 1.25877;
+    // x(1) = 0.968614;
+    // x(2) = 0.667564;
+    x(0) = stof(argv[1]);
+    x(1) = stof(argv[2]);
+    x(2) = stof(argv[3]);
 
 
     // init X
@@ -405,12 +447,45 @@ int main(int argc, char *argv[])
     Matrix<double,Dynamic,Dynamic> U_d;
     U_d = M_d*T;
 
+    Matrix<stan::math::var,Dynamic,1> x_var(m-1);
+    // x_var.setZero();
+    // x_var(0) = 1.25877;
+    // x_var(1) = 0.968614;
+    // x_var(2) = 0.667564;
+    x_var(0) = stof(argv[1]);
+    x_var(1) = stof(argv[2]);
+    x_var(2) = stof(argv[3]);
+
+
+    auto result = f(x_var);
+
+    Matrix<double,Dynamic,Dynamic> u_d_3(num_V,3);
+    Matrix<double,Dynamic,Dynamic> U_d_deformed(num_V,3);
+    Matrix<double,Dynamic,Dynamic> u_d_zero(num_V,1);
+
+    for (int i = 0; i < num_V; i++) {
+        u_d_3(i,0) = u_d(2*i);
+        u_d_3(i,1) = u_d(2*i+1);
+        u_d_3(i,2) = 0;
+    }
+
+
+    U_d_deformed = U_d + u_d_3;
+
+    igl::deform_skeleton(C,BE,T,CT,BET);
+
 
     // viewer
+    viewer.append_mesh();
     viewer.data().set_mesh(U_d, F);
-    set_color(viewer);
-    viewer.data().set_edges(C, BE, red);
-    viewer.data().add_points(C, red);
+    viewer.data().set_colors(blue);
+    viewer.append_mesh();
+    viewer.data().set_mesh(U_d_deformed, F);
+    viewer.data().set_colors(orange);
+
+    // set_color(viewer);
+    viewer.data().set_edges(CT, BET, red);
+    viewer.data().add_points(CT, red);
     viewer.data().show_lines = false;
     viewer.data().line_width = 10;
     viewer.callback_key_down = &key_down;
