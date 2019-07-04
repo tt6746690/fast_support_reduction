@@ -360,136 +360,169 @@ int main(int argc, char *argv[])
     // }
 
 
-    // // design variables: euler angle
-    // Matrix<double,Dynamic,1> x(m-1);
-    // x.setZero();
-    // for (int i = 0; i < m-1; i++) {
-    //     x(i) = 0.5;
-    // }
-
-
-    // // gradient descent
-    // double tol = 1e-5;
-    // double diff = 100;
-
-    // double step_size = 0.001; // fixed step size
-
-    // while (diff > tol) {
-
-    //     stan::math::jacobian(f, x, fx, J);
-    //     SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
-    //     tar = solver_d.solve(J);
-    //     dx = 2*tar.transpose().eval()*u_d;
-
-    //     // objfunc obj(x,dx);
-    //     // // find the optimal step length
-    //     // int bits = std::numeric_limits<double>::digits;
-    //     // std::pair<double, double> r = boost::math::tools::brent_find_minima(obj, 0., 100., bits);
-    //     // std::cout.precision(std::numeric_limits<double>::digits10);
-
-    //     x = x-step_size*dx;
-
-    //     diff = dx.norm();
-
-    //     cout << "x: " << x << endl; 
-    //     cout << "dx: " << dx.norm() << endl;
-
-    // }
-
-
-
-
-
+    // design variables: euler angle
     Matrix<double,Dynamic,1> x(m-1);
+    x.setZero();
+    for (int i = 0; i < m-1; i++) {
+        x(i) = 0.5;
+    }
+
+    // gradient descent
+    double tol = 1e-5;
+    double diff = 100;
+
+    double step_size = 0.001; // fixed step size
+
+    while (diff > tol) {
+
+        MTR_BEGIN("C++", "total");
+
+        // stan::math::jacobian(f, x, fx, J);
+        stan::math::start_nested();
+        try {
+            Matrix<stan::math::var, Dynamic, 1> x_var(x.size());
+            for (int k = 0; k < x.size(); ++k)
+                x_var(k) = x(k);
+            Matrix<stan::math::var, Dynamic, 1> fx_var = f(x_var);
+            fx.resize(fx_var.size());
+            for (int i = 0; i < fx_var.size(); ++i)
+                fx(i) = fx_var(i).val();
+            J.resize(fx_var.size(), x.size());
+
+            MTR_BEGIN("C++", "jacobian");
+
+            for (int i = 0; i < fx_var.size(); ++i) {
+                if (i > 0)
+                    stan::math::set_zero_all_adjoints_nested();
+                stan::math::grad(fx_var(i).vi_);
+                for (int k = 0; k < x.size(); ++k)
+                    J(i, k) = x_var(k).adj();
+            }
+
+            MTR_END("C++", "jacobian");  
+
+        } catch (const std::exception& e) {
+            stan::math::recover_memory_nested();
+            throw;
+        }
+        stan::math::recover_memory_nested();
+
+        MTR_END("C++", "total");  
+
+        SimplicialLDLT<SparseMatrix<double>> solver_d(K_d);
+        tar = solver_d.solve(J);
+        dx = 2*tar.transpose().eval()*u_d;
+
+        // objfunc obj(x,dx);
+        // // find the optimal step length
+        // int bits = std::numeric_limits<double>::digits;
+        // std::pair<double, double> r = boost::math::tools::brent_find_minima(obj, 0., 100., bits);
+        // std::cout.precision(std::numeric_limits<double>::digits10);
+
+        x = x-step_size*dx;
+
+        diff = 0;
+        // diff = dx.norm();
+
+        cout << "x: " << x << endl; 
+        cout << "dx: " << dx.norm() << endl;
+
+    }
+
+
+
+
+
+    // Matrix<double,Dynamic,1> x(m-1);
     // x.setZero();
     // x(0) = 1.25877;
     // x(1) = 0.968614;
     // x(2) = 0.667564;
-    x(0) = stof(argv[1]);
-    x(1) = stof(argv[2]);
-    x(2) = stof(argv[3]);
+    // // x(0) = stof(argv[1]);
+    // // x(1) = stof(argv[2]);
+    // // x(2) = stof(argv[3]);
 
 
-    // init X
-    Matrix<double,1,Dynamic> X(d*m);
-    X.setZero();
-    // update X
-    for (int j = 1; j < m; ++j) {
-        int k = d*j;
-        X(k+2) = x(j-1); // 2d
-    }
+    // // init X
+    // Matrix<double,1,Dynamic> X(d*m);
+    // X.setZero();
+    // // update X
+    // for (int j = 1; j < m; ++j) {
+    //     int k = d*j;
+    //     X(k+2) = x(j-1); // 2d
+    // }
 
-    // Construct list of relative rotations in terms of quaternion
-    // from Euler's angle
-    std::vector<Eigen::Quaternion<double>, Eigen::aligned_allocator<Eigen::Quaternion<double>>> dQ;
-    Matrix<double,1,3> th;
-    for (int j = 0; j < BE.rows(); ++j) {
-        th = X.segment(3*j, 3);
-        dQ.emplace_back(
-            Eigen::AngleAxis<double>(th(0), Eigen::Vector3d::UnitX()) *
-            Eigen::AngleAxis<double>(th(1), Eigen::Vector3d::UnitY()) *
-            Eigen::AngleAxis<double>(th(2), Eigen::Vector3d::UnitZ())
-        );
-    }
-
-
-    // Forward kinematics
-    Matrix<double,Dynamic,Dynamic> T;
-    igl::forward_kinematics(C, BE, P, dQ, T);
+    // // Construct list of relative rotations in terms of quaternion
+    // // from Euler's angle
+    // std::vector<Eigen::Quaternion<double>, Eigen::aligned_allocator<Eigen::Quaternion<double>>> dQ;
+    // Matrix<double,1,3> th;
+    // for (int j = 0; j < BE.rows(); ++j) {
+    //     th = X.segment(3*j, 3);
+    //     dQ.emplace_back(
+    //         Eigen::AngleAxis<double>(th(0), Eigen::Vector3d::UnitX()) *
+    //         Eigen::AngleAxis<double>(th(1), Eigen::Vector3d::UnitY()) *
+    //         Eigen::AngleAxis<double>(th(2), Eigen::Vector3d::UnitZ())
+    //     );
+    // }
 
 
-    std::cout << T << std::endl;
+    // // Forward kinematics
+    // Matrix<double,Dynamic,Dynamic> T;
+    // igl::forward_kinematics(C, BE, P, dQ, T);
 
-    // LBS
-    Matrix<double,Dynamic,Dynamic> M_d;
-    igl::lbs_matrix(V, W, M_d);
 
-    Matrix<double,Dynamic,Dynamic> U_d;
-    U_d = M_d*T;
+    // std::cout << T << std::endl;
 
-    Matrix<stan::math::var,Dynamic,1> x_var(m-1);
+    // // LBS
+    // Matrix<double,Dynamic,Dynamic> M_d;
+    // igl::lbs_matrix(V, W, M_d);
+
+    // Matrix<double,Dynamic,Dynamic> U_d;
+    // U_d = M_d*T;
+
+    // Matrix<stan::math::var,Dynamic,1> x_var(m-1);
     // x_var.setZero();
     // x_var(0) = 1.25877;
     // x_var(1) = 0.968614;
     // x_var(2) = 0.667564;
-    x_var(0) = stof(argv[1]);
-    x_var(1) = stof(argv[2]);
-    x_var(2) = stof(argv[3]);
+    // // x_var(0) = stof(argv[1]);
+    // // x_var(1) = stof(argv[2]);
+    // // x_var(2) = stof(argv[3]);
 
 
-    auto result = f(x_var);
+    // auto result = f(x_var);
 
-    Matrix<double,Dynamic,Dynamic> u_d_3(num_V,3);
-    Matrix<double,Dynamic,Dynamic> U_d_deformed(num_V,3);
-    Matrix<double,Dynamic,Dynamic> u_d_zero(num_V,1);
+    // Matrix<double,Dynamic,Dynamic> u_d_3(num_V,3);
+    // Matrix<double,Dynamic,Dynamic> U_d_deformed(num_V,3);
+    // Matrix<double,Dynamic,Dynamic> u_d_zero(num_V,1);
 
-    for (int i = 0; i < num_V; i++) {
-        u_d_3(i,0) = u_d(2*i);
-        u_d_3(i,1) = u_d(2*i+1);
-        u_d_3(i,2) = 0;
-    }
-
-
-    U_d_deformed = U_d + u_d_3;
-
-    igl::deform_skeleton(C,BE,T,CT,BET);
+    // for (int i = 0; i < num_V; i++) {
+    //     u_d_3(i,0) = u_d(2*i);
+    //     u_d_3(i,1) = u_d(2*i+1);
+    //     u_d_3(i,2) = 0;
+    // }
 
 
-    // viewer
-    viewer.append_mesh();
-    viewer.data().set_mesh(U_d, F);
-    viewer.data().set_colors(blue);
-    viewer.append_mesh();
-    viewer.data().set_mesh(U_d_deformed, F);
-    viewer.data().set_colors(orange);
+    // U_d_deformed = U_d + u_d_3;
 
-    // set_color(viewer);
-    viewer.data().set_edges(CT, BET, red);
-    viewer.data().add_points(CT, red);
-    viewer.data().show_lines = false;
-    viewer.data().line_width = 10;
-    viewer.callback_key_down = &key_down;
-    viewer.launch();
+    // igl::deform_skeleton(C,BE,T,CT,BET);
+
+
+    // // viewer
+    // viewer.append_mesh();
+    // viewer.data().set_mesh(U_d, F);
+    // viewer.data().set_colors(blue);
+    // viewer.append_mesh();
+    // viewer.data().set_mesh(U_d_deformed, F);
+    // viewer.data().set_colors(orange);
+
+    // // set_color(viewer);
+    // viewer.data().set_edges(CT, BET, red);
+    // viewer.data().add_points(CT, red);
+    // viewer.data().show_lines = false;
+    // viewer.data().line_width = 10;
+    // viewer.callback_key_down = &key_down;
+    // viewer.launch();
 
 
     mtr_flush();
