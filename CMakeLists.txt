@@ -89,8 +89,8 @@ file(GLOB SRCFILES
 
 # executables
 
-add_executable(shape_opt shape_opt.cpp ${SRCFILES})
-target_link_libraries(shape_opt igl::core igl::opengl_glfw igl::png igl::tetgen ${Boost_LIBRARIES})
+add_executable(shape_opt_auto_diff shape_opt_auto_diff.cpp ${SRCFILES})
+target_link_libraries(shape_opt_auto_diff igl::core igl::opengl_glfw igl::png igl::tetgen ${Boost_LIBRARIES})
 
 add_executable(practice practice.cpp ${SRCFILES})
 target_link_libraries(practice igl::core igl::opengl_glfw igl::png igl::tetgen)
