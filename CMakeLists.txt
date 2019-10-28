@@ -37,18 +37,16 @@ option(LIBIGL_WITH_VIEWER            "Use OpenGL viewer"  ON)
 option(LIBIGL_WITH_TETGEN            "Use Tetgen"         ON)
 option(LIBIGL_WITH_TRIANGLE          "Use Triangle"       ON)
 option(LIBIGL_WITH_PNG               "Use PNG"            ON)
-option(LIBIGL_WITH_CGAL              "Use CGAL"           ON)
+option(LIBIGL_WITH_CGAL              "Use CGAL"           OFF)
 find_package(LIBIGL REQUIRED QUIET)
 
 
-# cgal
-
+# cgal: for tetgen
 find_package(CGAL REQUIRED)
 include(${CGAL_USE_FILE})
 set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE CACHE BOOL "Force CGAL to maintain CMAKE flags")
 
 # minitrace
-
 add_definitions(-DMTR_ENABLED)
 
 # stan
@@ -89,11 +87,11 @@ file(GLOB SRCFILES
 
 # executables
 
-add_executable(shape_opt_auto_diff shape_opt_auto_diff.cpp ${SRCFILES})
-target_link_libraries(shape_opt_auto_diff igl::core igl::opengl_glfw igl::png igl::tetgen ${Boost_LIBRARIES})
+# add_executable(shape_opt_auto_diff shape_opt_auto_diff.cpp ${SRCFILES})
+# target_link_libraries(shape_opt_auto_diff igl::core igl::opengl_glfw igl::png igl::tetgen ${Boost_LIBRARIES})
 
-add_executable(practice practice.cpp ${SRCFILES})
-target_link_libraries(practice igl::core igl::opengl_glfw igl::png igl::tetgen)
+# add_executable(practice practice.cpp ${SRCFILES})
+# target_link_libraries(practice igl::core igl::opengl_glfw igl::png igl::tetgen)
 
 # add_executable(support_reduction support_reduction.cpp ${SRCFILES})
 # target_link_libraries(support_reduction igl::core igl::opengl_glfw igl::png igl::tetgen)
@@ -107,8 +105,8 @@ target_link_libraries(practice igl::core igl::opengl_glfw igl::png igl::tetgen)
 # add_executable(stress_visualizer stress_visualizer.cpp ${SRCFILES})
 # target_link_libraries(stress_visualizer igl::core igl::opengl_glfw igl::png igl::tetgen)
 
-# add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
-# target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)
+add_executable(mesh_file_generator mesh_file_generator.cpp ${SRCFILES})
+target_link_libraries(mesh_file_generator igl::core igl::opengl_glfw igl::tetgen igl::png)
 
 
 if(WITH_VISUALIZE)

@@ -43,7 +43,7 @@ const auto getfilepath = [](const std::string& path, const std::string& name, co
 void set_color(igl::opengl::glfw::Viewer &viewer)
 {
   Eigen::MatrixXd C;
-  igl::jet(W.col(selected).eval(),true,C);
+  igl::jet(TW.col(selected).eval(),true,C);
   viewer.data().set_colors(C);
 }
 
@@ -71,31 +71,31 @@ int main(int argc, char *argv[])
   using namespace std;
 
   string filename = string(argv[1]);
-  igl::readOBJ(getfilepath("../", filename, "obj"), U, G);
+  igl::readOBJ(getfilepath("../data/", filename, "obj"), U, G);
 
   // simplify the input mesh if too dense
-  if (G.rows() > 11000) { // just in case
-      igl::decimate(U, G, 10000, V, F, J);
-      igl::writeOBJ(getfilepath("../", filename, "obj"), V, F);
+  if (G.rows() > 500) { // just in case
+      igl::decimate(U, G, 500, V, F, J);
+      // igl::writeOBJ(getfilepath("../", filename, "obj"), V, F);
   }
   else {
       V = U;
       F = G;
   }
 
-  igl::readTGF(getfilepath("../", filename, "tgf"), C, BE);
+  igl::readTGF(getfilepath("../data/", filename, "tgf"), C, BE);
   // retrieve parents for forward kinematics
   igl::directed_edge_parents(BE, P);
 
   // TW: tet weights; W: surface weights for visualization
   robust_bbw(V, F, C, BE, TV, TT, TW, W);
 
-  igl::writeMESH(getfilepath("../data/", filename, "mesh"), TV, TT, F);
-  igl::writeDMAT(getfilepath("../data/", filename, "dmat"), TW);
+  // igl::writeMESH(getfilepath("../data/", filename, "mesh"), TV, TT, F);
+  // igl::writeDMAT(getfilepath("../data/", filename, "dmat"), TW);
 
   // Plot the mesh with pseudocolors
   igl::opengl::glfw::Viewer viewer;
-  viewer.data().set_mesh(V, F);
+  viewer.data().set_mesh(TV, F);
   set_color(viewer);
   viewer.data().set_edges(C, BE, sea_green);
   viewer.data().show_lines = false;

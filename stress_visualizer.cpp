@@ -15,8 +15,8 @@ using namespace std;
 
 MatrixXd V, B, C;
 MatrixXi F, Tet;
-const double E_y = 5e5; // Young's modulus
-const double Mu_p = 0.45; // possion ratio
+const double E_y = 6e5; // Young's modulus
+const double Mu_p = 0.4; // possion ratio
 const double g = 100.0;
 
 const auto getfilepath = [](const string& name, const string& ext){ 
@@ -87,7 +87,6 @@ int main(int argc, char* argv[]) {
         // collect the element
         elements.push_back(ele);
     }
-
 
 
     MTR_BEGIN("C++", "setTri");

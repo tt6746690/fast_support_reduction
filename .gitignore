@@ -39,6 +39,7 @@ papers/stress/text_1987_finite_element_method_linear_static_and_dynamic_finite_e
 *.swp
 
 build/*
+data/*
 
 # latex
 *.aux
